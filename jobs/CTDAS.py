@@ -42,4 +42,3 @@ def main(cfg):
         output_file = os.path.join(cfg.icon_input_icbc, 'icon_era5_inicond.sh')
         with open(output_file, "w") as outf:
             outf.write(to_write.format(cfg=cfg))
-
