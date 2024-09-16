@@ -22,7 +22,8 @@ def main(cfg):
     2. Download CAMS data for the chosen dates
     3. Interpolate CAMS data to the ERA-5 location (horizontally and vertically)
     4. Download ICOS station data for the chosen dates
-    5. Prepare the folder output structure
+    5. Download OCO-2 data for the chosen dates
+    6. Prepare the folder output structure
 
     Parameters
     ----------
