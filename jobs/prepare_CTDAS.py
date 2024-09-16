@@ -13,6 +13,7 @@ from .tools.fetch_external_data import fetch_era5, fetch_era5_nudging, fetch_CAM
 
 BASIC_PYTHON_JOB = True
 
+
 def main(cfg):
     """
     Prepare CTDAS inversion
@@ -58,7 +59,7 @@ def main(cfg):
         ],
                                    stdout=subprocess.PIPE)
         process.communicate()
-    
+
     # -- 2. Download CAMS CO2 data
     if cfg.cams_inicond:
         fetch_CAMS_CO2(cfg.startdate_sim, cfg.icon_input_icbc)
@@ -73,8 +74,7 @@ def main(cfg):
 
             # -- Give a name to the nudging file
             timestr = time.strftime('%Y%m%d%H')
-            filename = 'era_{timestr}_nudging.nc'.format(
-                timestr=timestr)
+            filename = 'era_{timestr}_nudging.nc'.format(timestr=timestr)
 
             # -- If initial time, copy the initial conditions to be used as boundary conditions
             if time == cfg.startdate_sim and cfg.era5_inicond:
@@ -114,8 +114,7 @@ def main(cfg):
             with open(cfg.icon_species_nudgingjob) as input_file:
                 to_write = input_file.read()
             output_file = os.path.join(
-                cfg.icon_input_icbc,
-                'icon_cams_nudging_{}.sh'.format(timestr))
+                cfg.icon_input_icbc, 'icon_cams_nudging_{}.sh'.format(timestr))
             with open(output_file, "w") as outf:
                 outf.write(to_write.format(cfg=cfg, filename=filename))
 
@@ -123,17 +122,22 @@ def main(cfg):
             process = subprocess.Popen([
                 "bash",
                 os.path.join(cfg.icon_input_icbc,
-                                'icon_cams_nudging_{}.sh'.format(timestr))
+                             'icon_cams_nudging_{}.sh'.format(timestr))
             ],
-                                        stdout=subprocess.PIPE)
+                                       stdout=subprocess.PIPE)
             process.communicate()
 
     # -- 4. Download ICOS CO2 data
     if cfg.fetch_ICOS:
         # -- This requires you to have accepted the ICOS license in your profile.
-        #    So, login to https://cpauth.icos-cp.eu/home/ , check the box, and 
+        #    So, login to https://cpauth.icos-cp.eu/home/ , check the box, and
         #    copy the cookie token on the bottom as your ICOS_cookie_token.
         fetch_ICOS(cookie_token=cfg.ICOS_cookie_token,
-                   start_date=cfg.startdate_sim, end_date=cfg.enddate_sim, save_path=cfg.ICOS_path, species=['co2',])
+                   start_date=cfg.startdate_sim,
+                   end_date=cfg.enddate_sim,
+                   save_path=cfg.ICOS_path,
+                   species=[
+                       'co2',
+                   ])
 
     logging.info("OK")

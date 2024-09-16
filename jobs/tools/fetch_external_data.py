@@ -5,7 +5,7 @@ import zipfile
 import logging
 import xarray as xr
 from icoscp.dobj import Dobj
-from icoscp.sparql.runsparql import RunSparql  
+from icoscp.sparql.runsparql import RunSparql
 from icoscp_core.icos import bootstrap
 from icoscp import cpauth
 import numpy as np
@@ -141,26 +141,39 @@ def fetch_CAMS_CO2(date, dir2move):
 
     c = cdsapi.Client()
 
-    download = os.path.join(tmpdir,f'cams_GHG_{date.strftime("%Y")}.zip')
+    download = os.path.join(tmpdir, f'cams_GHG_{date.strftime("%Y")}.zip')
     if not os.path.isfile(download):
         c.retrieve(
-            'cams-global-greenhouse-gas-inversion',
-            {
-                'variable': 'carbon_dioxide',
-                'quantity': 'concentration',
-                'input_observations': 'surface',
-                'time_aggregation': 'instantaneous',
-                'version': 'latest',
-                'year': date.strftime('%Y'),
+            'cams-global-greenhouse-gas-inversion', {
+                'variable':
+                'carbon_dioxide',
+                'quantity':
+                'concentration',
+                'input_observations':
+                'surface',
+                'time_aggregation':
+                'instantaneous',
+                'version':
+                'latest',
+                'year':
+                date.strftime('%Y'),
                 'month': [
-                    '01', '02', '03',
-                    '04', '05', '06',
-                    '07', '08', '09',
-                    '10', '11', '12',
+                    '01',
+                    '02',
+                    '03',
+                    '04',
+                    '05',
+                    '06',
+                    '07',
+                    '08',
+                    '09',
+                    '10',
+                    '11',
+                    '12',
                 ],
-                'format': 'zip',
-            },
-            download)
+                'format':
+                'zip',
+            }, download)
         logging.info(f'downloaded the CAMS data!')
     else:
         logging.info(f'File already downloaded and present at {download}')
@@ -168,7 +181,7 @@ def fetch_CAMS_CO2(date, dir2move):
     # --- Extract the zip file
     with zipfile.ZipFile(download) as zf:
         for member in zf.infolist():
-            if not os.path.isfile(os.path.join(tmpdir,member.filename)):
+            if not os.path.isfile(os.path.join(tmpdir, member.filename)):
                 try:
                     zf.extract(member, tmpdir)
                 except zipfile.error as e:
@@ -177,17 +190,26 @@ def fetch_CAMS_CO2(date, dir2move):
     # --- Output files to folder
     with zipfile.ZipFile(download) as zf:
         for member in zf.infolist():
-            filename = os.path.join(tmpdir,member.filename)
+            filename = os.path.join(tmpdir, member.filename)
             logging.info("Writing out CAMS data to file")
             ds_CAMS = xr.open_dataset(filename)
             for time in ds_CAMS.time:
-                outpath = os.path.join(dir2move,'cams_egg4_'+ds_CAMS.sel(time=time).time.dt.strftime('%Y%m%d%H').values+'.nc')
+                outpath = os.path.join(
+                    dir2move, 'cams_egg4_' +
+                    ds_CAMS.sel(time=time).time.dt.strftime('%Y%m%d%H').values
+                    + '.nc')
                 if not os.path.isfile(outpath):
-                    ds_out = ds_CAMS.where( ds_CAMS.time == time, drop=True ).squeeze()
+                    ds_out = ds_CAMS.where(ds_CAMS.time == time,
+                                           drop=True).squeeze()
                     ds_out.to_netcdf(outpath)
 
 
-def fetch_ICOS_data(cookie_token, query_type='any',start_date='01-01-2022', end_date='31-12-2022', save_path='', species=['co', 'co2', 'ch4']):
+def fetch_ICOS_data(cookie_token,
+                    query_type='any',
+                    start_date='01-01-2022',
+                    end_date='31-12-2022',
+                    save_path='',
+                    species=['co', 'co2', 'ch4']):
     '''
     This script starts a SPARQL query for downloading ICOS-CP data. The query is based on searching at the ICOS-CP
     (e.g., https://data.icos-cp.eu/portal/#%7B%22filterCategories%22%3A%7B%22variable%22%3A%5B%22http%3A%2F%2Fmeta.icos-cp.eu%2Fresources%2Fcpmeta%2Fco2atcMoleFrac%22%5D%7D%2C%22filterTemporal%22%3A%7B%22df%22%3A%222017-12-31%22%2C%22dt%22%3A%222018-12-30%22%7D%7D)
@@ -208,11 +230,11 @@ def fetch_ICOS_data(cookie_token, query_type='any',start_date='01-01-2022', end_
         qd += f" <http://meta.icos-cp.eu/resources/cpmeta/atc{specie.capitalize()}"
         if query_type == 'release':
             qd += "L2DataObject>"
-        elif query_type=='growing':
-            qd +="NrtGrowingDataObject>"
-        elif query_type=='any':
-            qd +="Product>"
-    
+        elif query_type == 'growing':
+            qd += "NrtGrowingDataObject>"
+        elif query_type == 'any':
+            qd += "Product>"
+
     query = '''
     prefix cpmeta: <http://meta.icos-cp.eu/ontologies/cpmeta/>
     prefix prov: <http://www.w3.org/ns/prov#>
@@ -232,39 +254,44 @@ def fetch_ICOS_data(cookie_token, query_type='any',start_date='01-01-2022', end_
 
     }}
     order by desc(?submTime)
-    '''.format(qd, 
-               (datetime.strptime(start_date, '%d-%m-%Y').date() - timedelta(days=1)).strftime('%Y-%m-%d'),
-               (datetime.strptime(end_date,   '%d-%m-%Y').date()                    ).strftime('%Y-%m-%d'))
+    '''.format(qd, (datetime.strptime(start_date, '%d-%m-%Y').date() -
+                    timedelta(days=1)).strftime('%Y-%m-%d'),
+               (datetime.strptime(end_date,
+                                  '%d-%m-%Y').date()).strftime('%Y-%m-%d'))
 
     # --- Run the SQL query
     result = RunSparql(query, 'pandas')
     result.run()
     result.data()
-    
+
     # --- Loop over the different stations (see https://icos-carbon-portal.github.io/pylib/ for more details)
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
     for d in result.data()['dobj']:
         obj = Dobj(d).data
-        
+
         shape = np.shape(obj)
-        
+
         lon = Dobj(d).lon
         lat = Dobj(d).lat
         variables = Dobj(d).variables.to_numpy()
-        Names=Dobj(d).colNames
-        specie = set(Names)-set(Names).difference(species)
-        meta = np.squeeze([x for x in variables if set(species) - set(x) != set(species)])
-        ds = xr.Dataset.from_dataframe(obj)        # This contains the data...  
+        Names = Dobj(d).colNames
+        specie = set(Names) - set(Names).difference(species)
+        meta = np.squeeze(
+            [x for x in variables if set(species) - set(x) != set(species)])
+        ds = xr.Dataset.from_dataframe(obj)  # This contains the data...
         # --- Cleanup of the dataframe...
         ds = ds.set_index(index='TIMESTAMP')
         ds = ds.sortby(ds.index)
         ds = ds.drop_duplicates(dim="index")
         # --- Subset to the timeframe of interest (this has no reason to fail, so you'll have to check these cases manually....)
         try:
-            ds = ds.sel(index=slice(datetime.strptime(start_date,'%d-%m-%Y').date().strftime('%Y-%m-%d'),
-                                    datetime.strptime(end_date,  '%d-%m-%Y').date().strftime('%Y-%m-%d')))
+            ds = ds.sel(index=slice(
+                datetime.strptime(start_date, '%d-%m-%Y').date().strftime(
+                    '%Y-%m-%d'),
+                datetime.strptime(end_date, '%d-%m-%Y').date().strftime(
+                    '%Y-%m-%d')))
         except:
             print('failure!')
             print(ds.index)
@@ -273,14 +300,20 @@ def fetch_ICOS_data(cookie_token, query_type='any',start_date='01-01-2022', end_
         ds = ds.rename({'index': 'time'})
         # --- Write out further attributes
         ds.attrs['Description'] = meta[2]
-        ds.attrs['Units'] = meta[1]   
+        ds.attrs['Units'] = meta[1]
         ds.attrs['Station'] = Dobj(d).station['id']
         ds.attrs['Full name of the station'] = Dobj(d).station['org']['name']
         ds.attrs['Elevation above sea level'] = Dobj(d).alt
-        ds.attrs['Sampling height over ground'] = Dobj(d).meta['specificInfo']['acquisition']['samplingHeight']
-        ds.attrs['Sampling height over sea level'] = float(Dobj(d).meta['specificInfo']['acquisition']['samplingHeight']) + float(Dobj(d).alt)
+        ds.attrs['Sampling height over ground'] = Dobj(
+            d).meta['specificInfo']['acquisition']['samplingHeight']
+        ds.attrs['Sampling height over sea level'] = float(
+            Dobj(d).meta['specificInfo']['acquisition']
+            ['samplingHeight']) + float(Dobj(d).alt)
         ds.attrs['Longitude'] = Dobj(d).lon
         ds.attrs['Latitude'] = Dobj(d).lat
         ds.attrs['Name of the tracer'] = meta[0]
-        name = 'ICOS_obs_' + str(specie)[2:-2] + '_' + query_type + '_' + str(Dobj(d).station['id']) + '_' + str(Dobj(d).meta['specificInfo']['acquisition']['samplingHeight']) + '_' + start_date + '_' + end_date + '.nc'
+        name = 'ICOS_obs_' + str(specie)[2:-2] + '_' + query_type + '_' + str(
+            Dobj(d).station['id']) + '_' + str(
+                Dobj(d).meta['specificInfo']['acquisition']
+                ['samplingHeight']) + '_' + start_date + '_' + end_date + '.nc'
         ds.to_netcdf(os.path.join(save_path, name))
