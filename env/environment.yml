@@ -4,8 +4,6 @@ channels:
   - defaults
 dependencies:
   - python=3.11
-  - cdo
-  - nco
   - numpy
   - cartopy
   - matplotlib
@@ -19,3 +17,5 @@ dependencies:
   - sphinx
   - sphinx_rtd_theme
   - sphinx-copybutton
+  - pip:
+    - icoscp
