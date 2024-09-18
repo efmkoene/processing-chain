@@ -9,7 +9,7 @@ import subprocess
 from . import tools, prepare_icon
 from pathlib import Path  # noqa: F401
 from .tools.interpolate_data import create_oh_for_restart, create_oh_for_inicond  # noqa: F401
-from .tools.fetch_external_data import fetch_era5, fetch_era5_nudging, fetch_CAMS_CO2, fetch_ICOS
+from .tools.fetch_external_data import fetch_era5, fetch_era5_nudging, fetch_CAMS_CO2, fetch_ICOS, fetch_external_data
 
 BASIC_PYTHON_JOB = True
 
@@ -140,4 +140,25 @@ def main(cfg):
                        'co2',
                    ])
 
+    if cfg.fetch_OCO2:
+        # A user must do the following steps to allow 
+            # from getpass import getpass
+            # import os
+            # from subprocess import Popen
+            # urs = 'urs.earthdata.nasa.gov'    # Earthdata URL to call for authentication
+            # prompts = ['Enter NASA Earthdata Login Username \n(or create an account at urs.earthdata.nasa.gov): ',
+            #         'Enter NASA Earthdata Login Password: ']
+            # homeDir = os.path.expanduser("~") + os.sep
+            # with open(homeDir + '.netrc', 'w') as file:
+            #     file.write('machine {} login {} password {}'.format(urs, getpass(prompt=prompts[0]), getpass(prompt=prompts[1])))
+            #     file.close()
+            # with open(homeDir + '.urs_cookies', 'w') as file:
+            #     file.write('')
+            #     file.close()
+            # with open(homeDir + '.dodsrc', 'w') as file:
+            #     file.write('HTTP.COOKIEJAR={}.urs_cookies\n'.format(homeDir))
+            #     file.write('HTTP.NETRC={}.netrc'.format(homeDir))
+            #     file.close()
+            # Popen('chmod og-rw ~/.netrc', shell=True)
+        fetch_external_data.fetch_OCO2(x, y, -8, 30, 35, 65, "/capstor/scratch/cscs/ekoene/temp", product="OCO2_L2_Lite_FP_11.1r")
     logging.info("OK")

@@ -17,5 +17,9 @@ dependencies:
   - sphinx
   - sphinx_rtd_theme
   - sphinx-copybutton
+  - pip
   - pip:
     - icoscp
+    - requests
+    - urllib3
+    - certifi
