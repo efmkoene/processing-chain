@@ -9,7 +9,7 @@ from icoscp.sparql.runsparql import RunSparql
 from icoscp_core.icos import bootstrap
 from icoscp import cpauth
 import numpy as np
-import sys 
+import sys
 import json
 import datetime
 import certifi
@@ -326,18 +326,26 @@ def fetch_ICOS_data(cookie_token,
         ds.to_netcdf(os.path.join(save_path, name))
 
 
-def fetch_OCO2(starttime, endtime, minlon, maxlon, minlat, maxlat, output_folder, product="OCO2_L2_Lite_FP_11r"):
+def fetch_OCO2(starttime,
+               endtime,
+               minlon,
+               maxlon,
+               minlat,
+               maxlat,
+               output_folder,
+               product="OCO2_L2_Lite_FP_11r"):
 
-    # hmm. Not currently working. The data is there, https://oco2.gesdisc.eosdis.nasa.gov/data/OCO2_DATA/OCO2_L2_Lite_FP.11.1r/2020/ 
+    # hmm. Not currently working. The data is there, https://oco2.gesdisc.eosdis.nasa.gov/data/OCO2_DATA/OCO2_L2_Lite_FP.11.1r/2020/
     # but GES DISC doesn't currently have it anymore...
-    
+
     # Set the product (based on the list above!) and other output settings
-    product = product # Standard
+    product = product  # Standard
     begTime = f'{starttime.strftime("%Y-%m-%d")}T00:00:00.000Z'
     endTime = f'{endtime.strftime("%Y-%m-%d")}T23:59:59.999Z'
 
     # Create a urllib PoolManager instance to make requests.
-    http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED',ca_certs=certifi.where())
+    http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED',
+                               ca_certs=certifi.where())
 
     # Set the URL for the GES DISC subset service endpoint
     svcurl = 'https://disc.gsfc.nasa.gov/service/subset/jsonwsp'
@@ -345,13 +353,15 @@ def fetch_OCO2(starttime, endtime, minlon, maxlon, minlat, maxlat, output_folder
     # This method POSTs formatted JSON WSP requests to the GES DISC endpoint URL
     # It is created for convenience since this task will be repeated more than once
     def get_http_data(request):
-        hdrs = {'Content-Type': 'application/json',
-                'Accept'      : 'application/json'}
-        data = json.dumps(request)       
+        hdrs = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+        data = json.dumps(request)
         r = http.request('POST', svcurl, body=data, headers=hdrs)
-        response = json.loads(r.data)   
+        response = json.loads(r.data)
         # Check for errors
-        if response['type'] == 'jsonwsp/fault' :
+        if response['type'] == 'jsonwsp/fault':
             print('API Error: faulty request')
             sys.exit(1)
         return response
@@ -362,12 +372,14 @@ def fetch_OCO2(starttime, endtime, minlon, maxlon, minlat, maxlat, output_folder
         'type': 'jsonwsp/request',
         'version': '1.0',
         'args': {
-            'role'  : 'subset',
-            'start' : begTime,
-            'end'   : endTime,
-            'box'   : [minlon, minlat, maxlon, maxlat],  
-            'crop'  : False,  
-            'data'  : [{'datasetId': product}]
+            'role': 'subset',
+            'start': begTime,
+            'end': endTime,
+            'box': [minlon, minlat, maxlon, maxlat],
+            'crop': False,
+            'data': [{
+                'datasetId': product
+            }]
         }
     }
 
@@ -380,31 +392,33 @@ def fetch_OCO2(starttime, endtime, minlon, maxlon, minlat, maxlat, output_folder
 
     # Report the JobID and initial status
     myJobId = response['result']['jobId']
-    print('Job ID: '+myJobId)
-    print('Job status: '+response['result']['Status'])
+    print('Job ID: ' + myJobId)
+    print('Job status: ' + response['result']['Status'])
 
     # Construct JSON WSP request for API method: GetStatus
     status_request = {
         'methodname': 'GetStatus',
         'version': '1.0',
         'type': 'jsonwsp/request',
-        'args': {'jobId': myJobId}
+        'args': {
+            'jobId': myJobId
+        }
     }
 
     # Check on the job status after a brief nap
     while response['result']['Status'] in ['Accepted', 'Running']:
         sleep(5)
         response = get_http_data(status_request)
-        status  = response['result']['Status']
+        status = response['result']['Status']
         percent = response['result']['PercentCompleted']
-        print ('Job status: %s (%d%c complete)' % (status,percent,'%'))
+        print('Job status: %s (%d%c complete)' % (status, percent, '%'))
 
-    if response['result']['Status'] == 'Succeeded' :
-        print ('Job Finished:  %s' % response['result']['message'])
-    else : 
+    if response['result']['Status'] == 'Succeeded':
+        print('Job Finished:  %s' % response['result']['message'])
+    else:
         print('Job Failed: %s' % response['fault']['code'])
         sys.exit(1)
-        
+
     # Construct JSON WSP request for API method: GetResult
     batchsize = 20
     results_request = {
@@ -418,39 +432,40 @@ def fetch_OCO2(starttime, endtime, minlon, maxlon, minlat, maxlat, output_folder
         }
     }
 
-    # Retrieve the results in JSON in multiple batches 
+    # Retrieve the results in JSON in multiple batches
     # Initialize variables, then submit the first GetResults request
     # Add the results from this batch to the list and increment the count
     results = []
-    count = 0 
-    response = get_http_data(results_request) 
+    count = 0
+    response = get_http_data(results_request)
     count = count + response['result']['itemsPerPage']
-    results.extend(response['result']['items']) 
+    results.extend(response['result']['items'])
 
     # Increment the startIndex and keep asking for more results until we have them all
     total = response['result']['totalResults']
-    while count < total :
-        results_request['args']['startIndex'] += batchsize 
-        response = get_http_data(results_request) 
+    while count < total:
+        results_request['args']['startIndex'] += batchsize
+        response = get_http_data(results_request)
         count = count + response['result']['itemsPerPage']
         results.extend(response['result']['items'])
-            
+
     # Check on the bookkeeping
     print('Retrieved %d out of %d expected items' % (len(results), total))
 
     # Sort the results into documents and URLs
     docs = []
     urls = []
-    for item in results :
+    for item in results:
         try:
-            if item['start'] and item['end'] : urls.append(item) 
+            if item['start'] and item['end']: urls.append(item)
         except:
             docs.append(item)
 
     # Print out the documentation links, but do not download them
     print('\nDocumentation:')
-    for item in docs : print(item['label']+': '+item['link'])
-        
+    for item in docs:
+        print(item['label'] + ': ' + item['link'])
+
     # Use the requests library to submit the HTTP_Services URLs and write out the results.
     print('\nHTTP_services output:')
     if not os.path.exists(output_folder):
@@ -460,16 +475,19 @@ def fetch_OCO2(starttime, endtime, minlon, maxlon, minlat, maxlat, output_folder
         if os.path.isfile(outfn):
             continue
 
-        URL = item['link'] 
+        URL = item['link']
         result = requests.get(URL)
         try:
             result.raise_for_status()
-            f = open(outfn,'wb')
+            f = open(outfn, 'wb')
             f.write(result.content)
             f.close()
             print(outfn, URL)
         except:
-            print('Error! Status code is %d for this URL:\n%s' % (result.status.code,URL))
-            print('Help for downloading data is at https://disc.gsfc.nasa.gov/data-access')
-            
+            print('Error! Status code is %d for this URL:\n%s' %
+                  (result.status.code, URL))
+            print(
+                'Help for downloading data is at https://disc.gsfc.nasa.gov/data-access'
+            )
+
     print('Finished')
