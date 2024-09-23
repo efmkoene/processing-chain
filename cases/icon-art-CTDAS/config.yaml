@@ -1,0 +1,82 @@
+# Configuration file for the 'icon-art-CTDAS' case with ICON
+
+workflow: icon
+constraint: gpu
+run_on: cpu
+compute_queue: normal
+ntasks_per_node: 36
+startdate: 2018-01-01T00:00:00Z
+enddate: 2018-12-31T23:59:59Z
+restart_step: PT10D
+CTDAS_step: 240
+
+eccodes_dir: ./input/eccodes_definitions
+iconremap_bin: ./ext/icontools/icontools/iconremap
+iconsub_bin: ./ext/icontools/icontools/iconsub
+latbc_filename: ifs_<y><m><d><h>_lbc.nc
+inidata_prefix: ifs_init_
+inidata_nameformat: '%Y%m%d%H'
+inidata_filename_suffix: .nc
+output_filename: icon-art-global-test
+filename_format: <output_filename>_DOM<physdom>_<ddhhmmss>
+lateral_boundary_grid_order: lateral_boundary
+art_input_folder: ./input/icon-art-global/art
+
+walltime:
+    prepare_icon: '00:15:00'
+    prepare_art_global: '00:10:00'
+    icon: '00:05:00'
+    prepare_CTDAS: '3:00:00'
+
+meteo:
+    dir: ./input/meteo
+    prefix: ifs_
+    nameformat: '%Y%m%d%H'
+    suffix: .grb
+    nudging_step: 3
+    fetch_era5: True
+    interpolate_CAMS_to_ERA5: True
+    url: https://cds-beta.climate.copernicus.eu/api
+    key: 1c2e45b1-dd08-4bc4-90c8-15c06304ae69
+    era5_inijob: icon_era5_inicond.sh
+    era5_nudgingjob: icon_era5_nudging.sh
+
+
+chem:
+    dir: ./input/icon-art-global/chem
+    prefix: cams_gqpe_
+    nameformat: '%Y%m%d_%H'
+    suffix: .grb
+    nudging_step: 3
+    fetch_CAMS: True
+    url: https://ads-beta.atmosphere.copernicus.eu/api
+    key: 1c2e45b1-dd08-4bc4-90c8-15c06304ae69
+
+obs:
+    fetch_ICOS: True
+    ICOS_cookie_token: cpauthToken=WzE3MjcxODM4NTk5NjgsImVyaWsua29lbmVAZW1wYS5jaCIsIlNhbWwiXR4YD2F2BeORMmb6xC6b6emc8jk+SLcju2hKPUGcllTQa238n1qHvl9Nqwr16JLW3MKF0XwDos5eF9zR0t4mgd2MND2Fhq7KI+fEL8Dx8s+usFCCNOpP2ElvuNz/Z3ZEnZr5dyLEwnuo+1AoAugMkuT87DELhj5S4xuarBCIf7GcStTZzYHJAjWtxJ3VbUA5tepWULoqS+40EDagchfYz7A2fQYphTznAB5LlzxOEWMAn2/289UXZMrgce6Rlket3XAMM8TF17bDoHeh8js0kfdlbhZQ0RjbJ1Xjf4MGzYBLru5Rces49D5jQ3oSXF0AmsZnyFdcDjswccj68Nz8pc3X
+    fetch_OCO2: True
+
+input_files:
+    inicond_filename: ./input/icon-art-global/icbc/era2icon_R2B03_2022060200.nc
+    map_file_nudging: ./input/icon-art-global/icbc/map_file.nudging
+    radiation_grid_filename: /users/ekoene/CTDAS_inputs/icon_europe_DOM01.parent.nc
+    dynamics_grid_filename: /users/ekoene/CTDAS_inputs/icon_europe_DOM01.nc
+    extpar_filename: /users/ekoene/CTDAS_inputs/icon_extpar_EriksGrid.nc
+    cldopt_filename: ./input/icon-art-global/rad/ECHAM6_CldOptProps.nc
+    lrtm_filename: ./input/icon-art-global/rad/rrtmg_lw.nc
+    chemtracer_xml_filename: ./input/icon-art-global/config/tracers.xml
+
+icon:
+    binary_file: ./ext/icon-art/bin/icon
+    runjob_filename: icon_runjob.cfg
+    # era5_inijob: icon_era5_inicond.sh
+    # era5_nudgingjob: icon_era5_nudging.sh
+    species_inijob: icon_species_inicond.sh
+    species_nudgingjob: icon_species_nudging.sh
+    output_writing_step: 6
+    compute_queue: normal
+    np_tot: 4
+    np_io: 1
+    np_restart: 1
+    np_prefetch: 1
