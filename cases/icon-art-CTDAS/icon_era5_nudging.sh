@@ -2,6 +2,8 @@
 
 cd {cfg.icon_input_icbc}
 
+module load daint-mc NCO CDO
+
 # ---------------------------------
 # -- Pre-processing
 # ---------------------------------
@@ -13,7 +15,7 @@ cdo -t ecmwf -f nc copy era5_ml_nudging.grib era5_ml_nudging.nc
 cdo -t ecmwf -f nc copy era5_surf_nudging.grib era5_surf_nudging.nc
 
 # -- Put all variables in the same file
-cdo merge era5_ml_nudging.nc era5_surf_nudging.nc era5_original_nudging.nc
+cdo -O merge era5_ml_nudging.nc era5_surf_nudging.nc era5_original_nudging.nc
 
 # -- Change variable and coordinates names to be consistent with ICON nomenclature
 cdo setpartabn,mypartab,convert era5_original_nudging.nc tmp.nc

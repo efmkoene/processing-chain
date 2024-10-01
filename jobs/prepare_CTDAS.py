@@ -40,35 +40,33 @@ def main(cfg):
     if cfg.meteo_fetch_era5:
         # -- Fetch ERA5 data
         logging.info(f"Times considered now: {cfg.startdate_sim}, {cfg.enddate_sim}, {cfg.CTDAS_step}")
-        for time in tools.iter_hours(cfg.startdate_sim,
-                                     cfg.enddate_sim,
-                                     step=cfg.CTDAS_step):
-            logging.info("Fetching ERA5 initial data")
-            fetch_era5(time, cfg.icon_input_icbc, resolution=0.25)
-
-            # -- Copy ERA5 processing script (icon_era5_inicond.job) in workdir.
-            logging.info("Preparing ERA5 preprocessing script for ICON")
-            era5_ini_template = cfg.case_path / cfg.meteo_era5_inijob
-            era5_ini_job = cfg.icon_input_icbc / cfg.meteo_era5_inijob
-            inicond_filename = cfg.icon_input_icbc / f'era_{time.strftime('%Y%m%d%H')}_ini.nc'
-            with open(era5_ini_template, 'r') as infile, open(era5_ini_job, 'w') as outfile:
-                outfile.write(infile.read().format(cfg=cfg, inicond_filename=inicond_filename))
-
-            # -- Copy mypartab in workdir
-            shutil.copy(
-                cfg.case_path / 'mypartab',
-                cfg.icon_input_icbc / 'mypartab')
-
-            # -- Run ERA5 processing script
-            logging.info("Running ERA5 preprocessing script")
-            subprocess.run(
-                ["bash", cfg.icon_input_icbc / 'icon_era5_inicond.sh'],
-                check=True,
-                stdout=subprocess.PIPE)
+        logging.info("Fetching ERA5 initial data")
+        fetch_era5(cfg.startdate_sim, cfg.icon_input_icbc, resolution=0.25)
 
     # -- 2. Download CAMS CO2 data (for a whole year)
     if cfg.chem_fetch_CAMS:
-        fetch_CAMS_CO2(cfg.startdate_sim, cfg.icon_input_icbc)
+        fetch_CAMS_CO2(cfg.startdate_sim, cfg.icon_input_icbc) # This should be turned into a more central location I think.
+
+    # -- 3. Process data
+    # --- ERA5 inicond
+    logging.info("Preparing ERA5 preprocessing script for ICON")
+    era5_ini_template = cfg.case_path / cfg.meteo_era5_inijob
+    era5_ini_job = cfg.icon_input_icbc / cfg.meteo_era5_inijob
+    datestr = cfg.startdate_sim.strftime('%Y%m%d%H')
+    inicond_filename = cfg.icon_input_icbc / f"era_{datestr}_ini.nc"
+    with open(era5_ini_template, 'r') as infile, open(era5_ini_job, 'w') as outfile:
+        outfile.write(infile.read().format(cfg=cfg, inicond_filename=inicond_filename, datestr=datestr))
+    shutil.copy(cfg.case_path / 'mypartab', cfg.icon_input_icbc / 'mypartab')
+    logging.info("Running ERA5 preprocessing script")
+    subprocess.run(["bash", era5_ini_job], check=True, stdout=subprocess.PIPE)
+    # --- CAMS inicond
+    logging.info("Preparing CAMS preprocessing script for ICON")
+    cams_ini_template = cfg.case_path / cfg.chem_cams_inijob
+    cams_ini_job = cfg.icon_input_icbc / cfg.chem_cams_inijob
+    with open(cams_ini_template, 'r') as infile, open(cams_ini_job, 'w') as outfile:
+        outfile.write(infile.read().format(cfg=cfg, inicond_filename=inicond_filename))
+    logging.info("Running CAMS preprocessing script")
+    subprocess.run(["bash", cams_ini_job], check=True, stdout=subprocess.PIPE)
 
     # -- 3. If global nudging, download and process ERA5 and CAMS data
     if cfg.meteo_interpolate_CAMS_to_ERA5:
@@ -97,9 +95,7 @@ def main(cfg):
 
             # -- Copy mypartab in workdir
             if not os.path.exists(cfg.case_path / 'mypartab'):
-                shutil.copy(
-                    cfg.case_path / 'mypartab',
-                    cfg.icon_input_icbc / 'mypartab')
+                shutil.copy(cfg.case_path / 'mypartab', cfg.icon_input_icbc / 'mypartab')
 
             # -- Run ERA5 processing script
             subprocess.run(
@@ -108,7 +104,7 @@ def main(cfg):
                 stdout=subprocess.PIPE)
 
             # -- Copy CAMS processing script (icon_cams_nudging.job) in workdir
-            cams_nudging_template = cfg.icon_species_nudgingjob
+            cams_nudging_template = cfg.case_path / cfg.icon_species_nudgingjob
             cams_nudging_job = cfg.icon_input_icbc / f'icon_cams_nudging_{timestr}.sh'
             with open(cams_nudging_template, 'r') as infile, open(cams_nudging_job, 'w') as outfile:
                 outfile.write(infile.read().format(cfg=cfg, filename=filename))

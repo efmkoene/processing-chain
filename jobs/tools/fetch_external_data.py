@@ -27,7 +27,7 @@ def fetch_era5(date, dir2move, resolution=1.0):
     key = os.popen(key_cmd).read().strip().split(": ")[1]
     c = cdsapi.Client(url=url, key=key)
 
-    if not os.path.isfile(os.path.join(dir2move, 'era5_ml.grib')):
+    if not os.path.isfile(os.path.join(dir2move, f"era5_ml_{date.strftime('%Y-%m-%d')}.grib")):
         """Fetch ERA5 data from ECMWF for initial conditions
 
         Parameters
@@ -56,11 +56,11 @@ def fetch_era5(date, dir2move, resolution=1.0):
                 'param': '75/76/130/131/132/133/135/246/247',
                 'stream': 'oper',
                 'type': 'an',
-                'grid': '{resolution}/{resolution}',
+                'grid': f'{resolution}/{resolution}',
             }, 'era5_ml.grib')
-        shutil.move('era5_ml.grib', os.path.join(dir2move, 'era5_ml.grib'))
+        shutil.move('era5_ml.grib', os.path.join(dir2move, f"era5_ml_{date.strftime('%Y-%m-%d')}.grib"))
 
-    if not os.path.isfile(os.path.join(dir2move, 'era5_surf.grib')):
+    if not os.path.isfile(os.path.join(dir2move, f"era5_surf_{date.strftime('%Y-%m-%d')}.grib")):
         # -- CI   : Sea Ice Cover                   - 31
         # -- ASN  : Snow albedo                     - 32
         # -- RSN  : Snow density                    - 33
@@ -88,13 +88,13 @@ def fetch_era5(date, dir2move, resolution=1.0):
                 '31/32/33/34/39/40/41/42/43/129/134/139/141/170/172/183/198/235/236/238',
                 'date': date.strftime('%Y-%m-%d'),
                 'time': date.strftime('%H:%M:%S'),
-                'grid': '{resolution}/{resolution}',
+                'grid': f'{resolution}/{resolution}',
             }, 'era5_surf.grib')
 
-        shutil.move('era5_surf.grib', os.path.join(dir2move, 'era5_surf.grib'))
+        shutil.move('era5_surf.grib', os.path.join(dir2move, f"era5_surf_{date.strftime('%Y-%m-%d')}.grib"))
 
 
-def fetch_era5_nudging(date, dir2move):
+def fetch_era5_nudging(date, dir2move, resolution=1.0):
     """Fetch ERA5 data from ECMWF for global nudging
 
     Parameters
@@ -108,7 +108,7 @@ def fetch_era5_nudging(date, dir2move):
     key_cmd = f"sed -n '/cds/ {{n;p}}' ~/.cdsapirc"
     key = os.popen(key_cmd).read().strip().split(": ")[1]
     c = cdsapi.Client(url=url, key=key)
-    if not os.path.isfile(os.path.join(dir2move, 'era5_ml_nudging.grib')):
+    if not os.path.isfile(os.path.join(dir2move, f"era5_ml_nudging_{date.strftime('%Y-%m-%d%H')}.grib")):
         c.retrieve(
             'reanalysis-era5-complete', {
                 'class': 'ea',
@@ -121,21 +121,21 @@ def fetch_era5_nudging(date, dir2move):
                 'param': '75/76/130/131/132/133/135/246/247',
                 'stream': 'oper',
                 'type': 'an',
-                'grid': '1.0/1.0',
+                'grid': f'{resolution}/{resolution}',
             }, 'era5_ml_nudging.grib')
         shutil.move('era5_ml_nudging.grib',
-                    os.path.join(dir2move, 'era5_ml_nudging.grib'))
-    if not os.path.isfile(os.path.join(dir2move, 'era5_surf_nudging.grib')):
+                    os.path.join(dir2move, f"era5_ml_nudging_{date.strftime('%Y-%m-%d%H')}.grib"))
+    if not os.path.isfile(os.path.join(dir2move, f"era5_surf_nudging_{date.strftime('%Y-%m-%d%H')}.grib")):
         c.retrieve(
             'reanalysis-era5-single-levels', {
                 'product_type': 'reanalysis',
                 'param': '129/134',
                 'date': date.strftime('%Y-%m-%d'),
                 'time': date.strftime('%H:%M:%S'),
-                'grid': '1.0/1.0',
+                'grid': f'{resolution}/{resolution}',
             }, 'era5_surf_nudging.grib')
         shutil.move('era5_surf_nudging.grib',
-                    os.path.join(dir2move, 'era5_surf_nudging.grib'))
+                    os.path.join(dir2move, f"era5_surf_nudging_{date.strftime('%Y-%m-%d%H')}.grib"))
 
 
 def fetch_CAMS_CO2(date, dir2move):

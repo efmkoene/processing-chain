@@ -29,10 +29,6 @@ walltime:
     prepare_CTDAS: '3:00:00'
 
 meteo:
-    dir: ./input/meteo
-    prefix: ifs_
-    nameformat: '%Y%m%d%H'
-    suffix: .grb
     nudging_step: 3
     fetch_era5: True
     interpolate_CAMS_to_ERA5: True
@@ -43,15 +39,13 @@ meteo:
 
 
 chem:
-    dir: ./input/icon-art-global/chem
-    prefix: cams_gqpe_
-    nameformat: '%Y%m%d_%H'
-    suffix: .grb
     nudging_step: 3
     fetch_CAMS: True
     url: https://ads-beta.atmosphere.copernicus.eu/api
     key: 1c2e45b1-dd08-4bc4-90c8-15c06304ae69
-
+    cams_inijob: icon_species_inicond.sh
+    cams_nudgingjob: icon_species_nudging.sh
+    
 obs:
     fetch_ICOS: True
     ICOS_cookie_token: cpauthToken=WzE3MjcxODM4NTk5NjgsImVyaWsua29lbmVAZW1wYS5jaCIsIlNhbWwiXR4YD2F2BeORMmb6xC6b6emc8jk+SLcju2hKPUGcllTQa238n1qHvl9Nqwr16JLW3MKF0XwDos5eF9zR0t4mgd2MND2Fhq7KI+fEL8Dx8s+usFCCNOpP2ElvuNz/Z3ZEnZr5dyLEwnuo+1AoAugMkuT87DELhj5S4xuarBCIf7GcStTZzYHJAjWtxJ3VbUA5tepWULoqS+40EDagchfYz7A2fQYphTznAB5LlzxOEWMAn2/289UXZMrgce6Rlket3XAMM8TF17bDoHeh8js0kfdlbhZQ0RjbJ1Xjf4MGzYBLru5Rces49D5jQ3oSXF0AmsZnyFdcDjswccj68Nz8pc3X
@@ -76,7 +70,7 @@ icon:
     species_nudgingjob: icon_species_nudging.sh
     output_writing_step: 6
     compute_queue: normal
-    np_tot: 4
-    np_io: 1
+    np_tot: 32
+    np_io: 3
     np_restart: 1
     np_prefetch: 1

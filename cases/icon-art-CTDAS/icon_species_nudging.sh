@@ -2,6 +2,8 @@
 
 cd {cfg.icon_input_icbc}
 
+module load daint-mc NCO CDO
+
 # ----------------------------------------------------------
 # -- Replicate Q and GEOSP variables for ICON-ART
 # ----------------------------------------------------------

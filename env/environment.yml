@@ -12,6 +12,7 @@ dependencies:
   - netcdf4
   - pyyaml
   - cdsapi
+  - nco=4.9.0
   - scikit-learn
   - f90nml
   - sphinx
