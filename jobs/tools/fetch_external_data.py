@@ -19,6 +19,7 @@ from time import sleep
 from subprocess import Popen
 from datetime import datetime, timedelta
 
+
 def fetch_CDS(product, date, levels, params, resolution, outloc):
     # Obtain CDS authentification from file
     url_cmd = f"grep 'cds' ~/.cdsapirc"
@@ -27,17 +28,20 @@ def fetch_CDS(product, date, levels, params, resolution, outloc):
     key = os.popen(key_cmd).read().strip().split(": ")[1]
     c = cdsapi.Client(url=url, key=key)
 
-   # Set temporal choices. ERA5 data on disk uses lists [2018-01-01, 2018-01-02, etc] while ERA5-complete uses strings with / as the separator
+    # Set temporal choices. ERA5 data on disk uses lists [2018-01-01, 2018-01-02, etc] while ERA5-complete uses strings with / as the separator
     if isinstance(date, datetime):
         datestr = date.strftime('%Y-%m-%d')
         timestr = date.strftime('%H:%M')
     elif isinstance(date, list):
         datestr = sorted({dt.date().strftime("%Y-%m-%d") for dt in date})
-        datestr = datestr if product=='reanalysis-era5-single-levels' else '/'.join(map(str, datestr))
+        datestr = datestr if product == 'reanalysis-era5-single-levels' else '/'.join(
+            map(str, datestr))
         timestr = sorted({dt.time().strftime("%H:%M") for dt in date})
-        timestr = timestr if product=='reanalysis-era5-single-levels' else '/'.join(map(str, timestr))
+        timestr = timestr if product == 'reanalysis-era5-single-levels' else '/'.join(
+            map(str, timestr))
     else:
-        raise TypeError(f"Expected a datetime or list, but got {type(date).__name__}.")
+        raise TypeError(
+            f"Expected a datetime or list, but got {type(date).__name__}.")
 
     # Set level choices
     if isinstance(levels, str):
@@ -47,33 +51,41 @@ def fetch_CDS(product, date, levels, params, resolution, outloc):
     elif levels is None:
         pass
     else:
-        raise TypeError(f"Expected a string or list, but got {type(levels).__name__}.")
-    
+        raise TypeError(
+            f"Expected a string or list, but got {type(levels).__name__}.")
+
     # Set parameters
     if isinstance(params, str):
         paramstr = params
     elif isinstance(params, list):
         paramstr = '/'.join(map(str, params))
     else:
-        raise TypeError(f"Expected a string or list, but got {type(params).__name__}.")
+        raise TypeError(
+            f"Expected a string or list, but got {type(params).__name__}.")
 
     c.retrieve(
         product, {
-            'date': datestr,
-            'time': timestr,
-            'param': paramstr,
-            'grid': f'{resolution}/{resolution}',
-            **({'class': 'ea',
+            'date':
+            datestr,
+            'time':
+            timestr,
+            'param':
+            paramstr,
+            'grid':
+            f'{resolution}/{resolution}',
+            **({
+                'class': 'ea',
                 'type': 'an',
                 'stream': 'oper',
-                'levelist': levelstr, 
-                'levtype': 'ml', 
-                'expver': '1'} if product=='reanalysis-era5-complete' else {}),
-            **({'product_type': 'reanalysis'} if product=='reanalysis-era5-single-levels' else {}),
-        },
-        outloc.name
-    )
-    shutil.move(outloc.name,outloc)
+                'levelist': levelstr,
+                'levtype': 'ml',
+                'expver': '1'
+            } if product == 'reanalysis-era5-complete' else {}),
+            **({
+                'product_type': 'reanalysis'
+            } if product == 'reanalysis-era5-single-levels' else {}),
+        }, outloc.name)
+    shutil.move(outloc.name, outloc)
 
 
 def fetch_era5(date, dir2move, resolution=1.0):
@@ -88,7 +100,9 @@ def fetch_era5(date, dir2move, resolution=1.0):
         # -- W    : Vertical velocity                       - 135
         # -- CLWC : Specific cloud liquid water content     - 246
         # -- CIWC : Specific cloud ice water content        - 247
-        fetch_CDS('reanalysis-era5-complete', date, '1/to/137', [75, 76, 130, 131, 132, 133, 135, 246, 247], resolution, outfile)
+        fetch_CDS('reanalysis-era5-complete', date, '1/to/137',
+                  [75, 76, 130, 131, 132, 133, 135, 246, 247], resolution,
+                  outfile)
 
     outfile = dir2move / f"era5_surf_{date.strftime('%Y-%m-%d')}.grib"
     if not os.path.isfile(outfile):
@@ -112,7 +126,10 @@ def fetch_era5(date, dir2move, resolution=1.0):
         # -- SKT  : Skin Temperature               - 235
         # -- STL4 : Soil temperature level 4       - 236
         # -- TSN  : Temperature of snow layer      - 238
-        fetch_CDS('reanalysis-era5-single-levels', date, None, [31, 32, 33, 34, 39, 40, 41, 42, 43, 129, 134, 139, 141, 170, 172, 183, 198, 235, 236, 238], resolution, outfile)
+        fetch_CDS('reanalysis-era5-single-levels', date, None, [
+            31, 32, 33, 34, 39, 40, 41, 42, 43, 129, 134, 139, 141, 170, 172,
+            183, 198, 235, 236, 238
+        ], resolution, outfile)
 
 
 def fetch_era5_nudging(date, dir2move, resolution=1.0):
@@ -125,11 +142,16 @@ def fetch_era5_nudging(date, dir2move, resolution=1.0):
     """
     outfile = dir2move / f"era5_ml_nudging_{date.strftime('%Y-%m-%d%H')}.grib"
     if not os.path.isfile(outfile):
-        fetch_CDS('reanalysis-era5-complete', date, '1/to/137', [75, 76, 130, 131, 132, 133, 135, 246, 247], resolution, outfile)
+        fetch_CDS('reanalysis-era5-complete', date, '1/to/137',
+                  [75, 76, 130, 131, 132, 133, 135, 246, 247], resolution,
+                  outfile)
 
     outfile = dir2move / f"era5_surf_nudging_{date.strftime('%Y-%m-%d%H')}.grib"
     if not os.path.isfile(outfile):
-        fetch_CDS('reanalysis-era5-single-levels', date, None, [31, 32, 33, 34, 39, 40, 41, 42, 43, 129, 134, 139, 141, 170, 172, 183, 198, 235, 236, 238], resolution, outfile)
+        fetch_CDS('reanalysis-era5-single-levels', date, None, [
+            31, 32, 33, 34, 39, 40, 41, 42, 43, 129, 134, 139, 141, 170, 172,
+            183, 198, 235, 236, 238
+        ], resolution, outfile)
 
 
 def fetch_CAMS_CO2(date, dir2move):
