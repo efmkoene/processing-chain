@@ -84,8 +84,7 @@ def fetch_CDS(product, date, levels, params, resolution, outloc):
             **({
                 'product_type': 'reanalysis'
             } if product == 'reanalysis-era5-single-levels' else {}),
-        }, outloc.name)
-    shutil.move(outloc.name, outloc)
+        }, outloc)
 
 
 def fetch_era5(date, dir2move, resolution=1.0):
