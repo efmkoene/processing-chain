@@ -27,13 +27,9 @@ def fetch_era5(date, dir2move, resolution=1.0):
     key = os.popen(key_cmd).read().strip().split(": ")[1]
     c = cdsapi.Client(url=url, key=key)
 
-<<<<<<< HEAD
-    if not os.path.isfile(os.path.join(dir2move, f"era5_ml_{date.strftime('%Y%m%d%H')}.grib")):
-=======
     if not os.path.isfile(
             os.path.join(dir2move,
                          f"era5_ml_{date.strftime('%Y-%m-%d')}.grib")):
->>>>>>> 49384b5b8cdc5b451b949c1ca0e4e408f53d2637
         """Fetch ERA5 data from ECMWF for initial conditions
 
         Parameters
@@ -64,11 +60,6 @@ def fetch_era5(date, dir2move, resolution=1.0):
                 'type': 'an',
                 'grid': f'{resolution}/{resolution}',
             }, 'era5_ml.grib')
-<<<<<<< HEAD
-        shutil.move('era5_ml.grib', os.path.join(dir2move, f"era5_ml_{date.strftime('%Y%m%d%H')}.grib"))
-
-    if not os.path.isfile(os.path.join(dir2move, f"era5_surf_{date.strftime('%Y%m%d%H')}.grib")):
-=======
         shutil.move(
             'era5_ml.grib',
             os.path.join(dir2move,
@@ -77,7 +68,6 @@ def fetch_era5(date, dir2move, resolution=1.0):
     if not os.path.isfile(
             os.path.join(dir2move,
                          f"era5_surf_{date.strftime('%Y-%m-%d')}.grib")):
->>>>>>> 49384b5b8cdc5b451b949c1ca0e4e408f53d2637
         # -- CI   : Sea Ice Cover                   - 31
         # -- ASN  : Snow albedo                     - 32
         # -- RSN  : Snow density                    - 33
@@ -108,14 +98,10 @@ def fetch_era5(date, dir2move, resolution=1.0):
                 'grid': f'{resolution}/{resolution}',
             }, 'era5_surf.grib')
 
-<<<<<<< HEAD
-        shutil.move('era5_surf.grib', os.path.join(dir2move, f"era5_surf_{date.strftime('%Y%m%d%H')}.grib"))
-=======
         shutil.move(
             'era5_surf.grib',
             os.path.join(dir2move,
                          f"era5_surf_{date.strftime('%Y-%m-%d')}.grib"))
->>>>>>> 49384b5b8cdc5b451b949c1ca0e4e408f53d2637
 
 
 def fetch_era5_nudging(date, dir2move, resolution=1.0):
@@ -132,14 +118,10 @@ def fetch_era5_nudging(date, dir2move, resolution=1.0):
     key_cmd = f"sed -n '/cds/ {{n;p}}' ~/.cdsapirc"
     key = os.popen(key_cmd).read().strip().split(": ")[1]
     c = cdsapi.Client(url=url, key=key)
-<<<<<<< HEAD
-    if not os.path.isfile(os.path.join(dir2move, f"era5_ml_nudging_{date.strftime('%Y%m%d%H%H')}.grib")):
-=======
     if not os.path.isfile(
             os.path.join(
                 dir2move,
                 f"era5_ml_nudging_{date.strftime('%Y-%m-%d%H')}.grib")):
->>>>>>> 49384b5b8cdc5b451b949c1ca0e4e408f53d2637
         c.retrieve(
             'reanalysis-era5-complete', {
                 'class': 'ea',
@@ -154,11 +136,6 @@ def fetch_era5_nudging(date, dir2move, resolution=1.0):
                 'type': 'an',
                 'grid': f'{resolution}/{resolution}',
             }, 'era5_ml_nudging.grib')
-<<<<<<< HEAD
-        shutil.move('era5_ml_nudging.grib',
-                    os.path.join(dir2move, f"era5_ml_nudging_{date.strftime('%Y%m%d%H')}.grib"))
-    if not os.path.isfile(os.path.join(dir2move, f"era5_surf_nudging_{date.strftime('%Y%m%d%H')}.grib")):
-=======
         shutil.move(
             'era5_ml_nudging.grib',
             os.path.join(
@@ -168,7 +145,6 @@ def fetch_era5_nudging(date, dir2move, resolution=1.0):
             os.path.join(
                 dir2move,
                 f"era5_surf_nudging_{date.strftime('%Y-%m-%d%H')}.grib")):
->>>>>>> 49384b5b8cdc5b451b949c1ca0e4e408f53d2637
         c.retrieve(
             'reanalysis-era5-single-levels', {
                 'product_type': 'reanalysis',
@@ -177,16 +153,11 @@ def fetch_era5_nudging(date, dir2move, resolution=1.0):
                 'time': date.strftime('%H:%M:%S'),
                 'grid': f'{resolution}/{resolution}',
             }, 'era5_surf_nudging.grib')
-<<<<<<< HEAD
-        shutil.move('era5_surf_nudging.grib',
-                    os.path.join(dir2move, f"era5_surf_nudging_{date.strftime('%Y%m%d%H')}.grib"))
-=======
         shutil.move(
             'era5_surf_nudging.grib',
             os.path.join(
                 dir2move,
                 f"era5_surf_nudging_{date.strftime('%Y-%m-%d%H')}.grib"))
->>>>>>> 49384b5b8cdc5b451b949c1ca0e4e408f53d2637
 
 
 def fetch_CAMS_CO2(date, dir2move):
