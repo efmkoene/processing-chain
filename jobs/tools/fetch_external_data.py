@@ -19,25 +19,66 @@ from time import sleep
 from subprocess import Popen
 from datetime import datetime, timedelta
 
-
-def fetch_era5(date, dir2move, resolution=1.0):
+def fetch_CDS(product, date, levels, params, resolution, outloc):
+    # Obtain CDS authentification from file
     url_cmd = f"grep 'cds' ~/.cdsapirc"
     url = os.popen(url_cmd).read().strip().split(": ")[1]
     key_cmd = f"sed -n '/cds/ {{n;p}}' ~/.cdsapirc"
     key = os.popen(key_cmd).read().strip().split(": ")[1]
     c = cdsapi.Client(url=url, key=key)
 
-    if not os.path.isfile(
-            os.path.join(dir2move,
-                         f"era5_ml_{date.strftime('%Y-%m-%d')}.grib")):
-        """Fetch ERA5 data from ECMWF for initial conditions
+   # Set temporal choices. ERA5 data on disk uses lists [2018-01-01, 2018-01-02, etc] while ERA5-complete uses strings with / as the separator
+    if isinstance(date, datetime):
+        datestr = date.strftime('%Y-%m-%d')
+        timestr = date.strftime('%H:%M')
+    elif isinstance(date, list):
+        datestr = sorted({dt.date().strftime("%Y-%m-%d") for dt in date})
+        datestr = datestr if product=='reanalysis-era5-single-levels' else '/'.join(map(str, datestr))
+        timestr = sorted({dt.time().strftime("%H:%M") for dt in date})
+        timestr = timestr if product=='reanalysis-era5-single-levels' else '/'.join(map(str, timestr))
+    else:
+        raise TypeError(f"Expected a datetime or list, but got {type(date).__name__}.")
 
-        Parameters
-        ----------
-        date : initial date to fetch
+    # Set level choices
+    if isinstance(levels, str):
+        levelstr = levels
+    elif isinstance(levels, list):
+        levelstr = '/'.join(map(str, levels))
+    elif levels is None:
+        pass
+    else:
+        raise TypeError(f"Expected a string or list, but got {type(levels).__name__}.")
+    
+    # Set parameters
+    if isinstance(params, str):
+        paramstr = params
+    elif isinstance(params, list):
+        paramstr = '/'.join(map(str, params))
+    else:
+        raise TypeError(f"Expected a string or list, but got {type(params).__name__}.")
 
-        """
+    c.retrieve(
+        product, {
+            'date': datestr,
+            'time': timestr,
+            'param': paramstr,
+            'grid': f'{resolution}/{resolution}',
+            **({'class': 'ea',
+                'type': 'an',
+                'stream': 'oper',
+                'levelist': levelstr, 
+                'levtype': 'ml', 
+                'expver': '1'} if product=='reanalysis-era5-complete' else {}),
+            **({'product_type': 'reanalysis'} if product=='reanalysis-era5-single-levels' else {}),
+        },
+        outloc.name
+    )
+    shutil.move(outloc.name,outloc)
 
+
+def fetch_era5(date, dir2move, resolution=1.0):
+    outfile = dir2move / f"era5_ml_{date.strftime('%Y-%m-%d')}.grib"
+    if not os.path.isfile(outfile):
         # -- CRWC : Specific rain water content              - 75
         # -- CSWC : Specific snow water content              - 76
         # -- T    : Temperature                             - 130
@@ -47,27 +88,10 @@ def fetch_era5(date, dir2move, resolution=1.0):
         # -- W    : Vertical velocity                       - 135
         # -- CLWC : Specific cloud liquid water content     - 246
         # -- CIWC : Specific cloud ice water content        - 247
-        c.retrieve(
-            'reanalysis-era5-complete', {
-                'class': 'ea',
-                'date': date.strftime('%Y-%m-%d'),
-                'time': date.strftime('%H:%M:%S'),
-                'expver': '1',
-                'levelist': '1/to/137',
-                'levtype': 'ml',
-                'param': '75/76/130/131/132/133/135/246/247',
-                'stream': 'oper',
-                'type': 'an',
-                'grid': f'{resolution}/{resolution}',
-            }, 'era5_ml.grib')
-        shutil.move(
-            'era5_ml.grib',
-            os.path.join(dir2move,
-                         f"era5_ml_{date.strftime('%Y-%m-%d')}.grib"))
+        fetch_CDS('reanalysis-era5-complete', date, '1/to/137', [75, 76, 130, 131, 132, 133, 135, 246, 247], resolution, outfile)
 
-    if not os.path.isfile(
-            os.path.join(dir2move,
-                         f"era5_surf_{date.strftime('%Y-%m-%d')}.grib")):
+    outfile = dir2move / f"era5_surf_{date.strftime('%Y-%m-%d')}.grib"
+    if not os.path.isfile(outfile):
         # -- CI   : Sea Ice Cover                   - 31
         # -- ASN  : Snow albedo                     - 32
         # -- RSN  : Snow density                    - 33
@@ -88,20 +112,7 @@ def fetch_era5(date, dir2move, resolution=1.0):
         # -- SKT  : Skin Temperature               - 235
         # -- STL4 : Soil temperature level 4       - 236
         # -- TSN  : Temperature of snow layer      - 238
-        c.retrieve(
-            'reanalysis-era5-single-levels', {
-                'product_type': 'reanalysis',
-                'param':
-                '31/32/33/34/39/40/41/42/43/129/134/139/141/170/172/183/198/235/236/238',
-                'date': date.strftime('%Y-%m-%d'),
-                'time': date.strftime('%H:%M:%S'),
-                'grid': f'{resolution}/{resolution}',
-            }, 'era5_surf.grib')
-
-        shutil.move(
-            'era5_surf.grib',
-            os.path.join(dir2move,
-                         f"era5_surf_{date.strftime('%Y-%m-%d')}.grib"))
+        fetch_CDS('reanalysis-era5-single-levels', date, None, [31, 32, 33, 34, 39, 40, 41, 42, 43, 129, 134, 139, 141, 170, 172, 183, 198, 235, 236, 238], resolution, outfile)
 
 
 def fetch_era5_nudging(date, dir2move, resolution=1.0):
@@ -112,52 +123,13 @@ def fetch_era5_nudging(date, dir2move, resolution=1.0):
     date : initial date to fetch
 
     """
+    outfile = dir2move / f"era5_ml_nudging_{date.strftime('%Y-%m-%d%H')}.grib"
+    if not os.path.isfile(outfile):
+        fetch_CDS('reanalysis-era5-complete', date, '1/to/137', [75, 76, 130, 131, 132, 133, 135, 246, 247], resolution, outfile)
 
-    url_cmd = f"grep 'cds' ~/.cdsapirc"
-    url = os.popen(url_cmd).read().strip().split(": ")[1]
-    key_cmd = f"sed -n '/cds/ {{n;p}}' ~/.cdsapirc"
-    key = os.popen(key_cmd).read().strip().split(": ")[1]
-    c = cdsapi.Client(url=url, key=key)
-    if not os.path.isfile(
-            os.path.join(
-                dir2move,
-                f"era5_ml_nudging_{date.strftime('%Y-%m-%d%H')}.grib")):
-        c.retrieve(
-            'reanalysis-era5-complete', {
-                'class': 'ea',
-                'date': date.strftime('%Y-%m-%d'),
-                'time': date.strftime('%H:%M:%S'),
-                'expver': '1',
-                'levelist':
-                '1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/16/17/18/19/20/21/22/23/24/25/26/27/28/29/30/31/32/33/34/35/36/37/38/39/40/41/42/43/44/45/46/47/48/49/50/51/52/53/54/55/56/57/58/59/60/61/62/63/64/65/66/67/68/69/70/71/72/73/74/75/76/77/78/79/80/81/82/83/84/85/86/87/88/89/90/91/92/93/94/95/96/97/98/99/100/101/102/103/104/105/106/107/108/109/110/111/112/113/114/115/116/117/118/119/120/121/122/123/124/125/126/127/128/129/130/131/132/133/134/135/136/137',
-                'levtype': 'ml',
-                'param': '75/76/130/131/132/133/135/246/247',
-                'stream': 'oper',
-                'type': 'an',
-                'grid': f'{resolution}/{resolution}',
-            }, 'era5_ml_nudging.grib')
-        shutil.move(
-            'era5_ml_nudging.grib',
-            os.path.join(
-                dir2move,
-                f"era5_ml_nudging_{date.strftime('%Y-%m-%d%H')}.grib"))
-    if not os.path.isfile(
-            os.path.join(
-                dir2move,
-                f"era5_surf_nudging_{date.strftime('%Y-%m-%d%H')}.grib")):
-        c.retrieve(
-            'reanalysis-era5-single-levels', {
-                'product_type': 'reanalysis',
-                'param': '129/134',
-                'date': date.strftime('%Y-%m-%d'),
-                'time': date.strftime('%H:%M:%S'),
-                'grid': f'{resolution}/{resolution}',
-            }, 'era5_surf_nudging.grib')
-        shutil.move(
-            'era5_surf_nudging.grib',
-            os.path.join(
-                dir2move,
-                f"era5_surf_nudging_{date.strftime('%Y-%m-%d%H')}.grib"))
+    outfile = dir2move / f"era5_surf_nudging_{date.strftime('%Y-%m-%d%H')}.grib"
+    if not os.path.isfile(outfile):
+        fetch_CDS('reanalysis-era5-single-levels', date, None, [31, 32, 33, 34, 39, 40, 41, 42, 43, 129, 134, 139, 141, 170, 172, 183, 198, 235, 236, 238], resolution, outfile)
 
 
 def fetch_CAMS_CO2(date, dir2move):
