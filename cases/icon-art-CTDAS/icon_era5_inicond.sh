@@ -11,8 +11,8 @@ module load daint-mc CDO NCO
 rm -f {inicond_filename}
 
 # -- Convert the GRIB files to NetCDF
-cdo -t ecmwf -f nc copy era5_ml_{datestr}.grib era5_ml_{datestr}.nc
-cdo -t ecmwf -f nc copy era5_surf_{datestr}.grib era5_surf_{datestr}.nc
+cdo -t ecmwf -f nc copy era5_ml_{datestr}.grib era5_ml.nc
+cdo -t ecmwf -f nc copy era5_surf_{datestr}.grib era5_surf.nc
 
 # -- Put all variables in the same file
 cdo -O merge era5_ml.nc era5_surf.nc era5_original.nc

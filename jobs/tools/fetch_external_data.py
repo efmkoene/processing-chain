@@ -27,7 +27,7 @@ def fetch_era5(date, dir2move, resolution=1.0):
     key = os.popen(key_cmd).read().strip().split(": ")[1]
     c = cdsapi.Client(url=url, key=key)
 
-    if not os.path.isfile(os.path.join(dir2move, f"era5_ml_{date.strftime('%Y-%m-%d')}.grib")):
+    if not os.path.isfile(os.path.join(dir2move, f"era5_ml_{date.strftime('%Y%m%d%H')}.grib")):
         """Fetch ERA5 data from ECMWF for initial conditions
 
         Parameters
@@ -58,9 +58,9 @@ def fetch_era5(date, dir2move, resolution=1.0):
                 'type': 'an',
                 'grid': f'{resolution}/{resolution}',
             }, 'era5_ml.grib')
-        shutil.move('era5_ml.grib', os.path.join(dir2move, f"era5_ml_{date.strftime('%Y-%m-%d')}.grib"))
+        shutil.move('era5_ml.grib', os.path.join(dir2move, f"era5_ml_{date.strftime('%Y%m%d%H')}.grib"))
 
-    if not os.path.isfile(os.path.join(dir2move, f"era5_surf_{date.strftime('%Y-%m-%d')}.grib")):
+    if not os.path.isfile(os.path.join(dir2move, f"era5_surf_{date.strftime('%Y%m%d%H')}.grib")):
         # -- CI   : Sea Ice Cover                   - 31
         # -- ASN  : Snow albedo                     - 32
         # -- RSN  : Snow density                    - 33
@@ -91,7 +91,7 @@ def fetch_era5(date, dir2move, resolution=1.0):
                 'grid': f'{resolution}/{resolution}',
             }, 'era5_surf.grib')
 
-        shutil.move('era5_surf.grib', os.path.join(dir2move, f"era5_surf_{date.strftime('%Y-%m-%d')}.grib"))
+        shutil.move('era5_surf.grib', os.path.join(dir2move, f"era5_surf_{date.strftime('%Y%m%d%H')}.grib"))
 
 
 def fetch_era5_nudging(date, dir2move, resolution=1.0):
@@ -108,7 +108,7 @@ def fetch_era5_nudging(date, dir2move, resolution=1.0):
     key_cmd = f"sed -n '/cds/ {{n;p}}' ~/.cdsapirc"
     key = os.popen(key_cmd).read().strip().split(": ")[1]
     c = cdsapi.Client(url=url, key=key)
-    if not os.path.isfile(os.path.join(dir2move, f"era5_ml_nudging_{date.strftime('%Y-%m-%d%H')}.grib")):
+    if not os.path.isfile(os.path.join(dir2move, f"era5_ml_nudging_{date.strftime('%Y%m%d%H%H')}.grib")):
         c.retrieve(
             'reanalysis-era5-complete', {
                 'class': 'ea',
@@ -124,8 +124,8 @@ def fetch_era5_nudging(date, dir2move, resolution=1.0):
                 'grid': f'{resolution}/{resolution}',
             }, 'era5_ml_nudging.grib')
         shutil.move('era5_ml_nudging.grib',
-                    os.path.join(dir2move, f"era5_ml_nudging_{date.strftime('%Y-%m-%d%H')}.grib"))
-    if not os.path.isfile(os.path.join(dir2move, f"era5_surf_nudging_{date.strftime('%Y-%m-%d%H')}.grib")):
+                    os.path.join(dir2move, f"era5_ml_nudging_{date.strftime('%Y%m%d%H')}.grib"))
+    if not os.path.isfile(os.path.join(dir2move, f"era5_surf_nudging_{date.strftime('%Y%m%d%H')}.grib")):
         c.retrieve(
             'reanalysis-era5-single-levels', {
                 'product_type': 'reanalysis',
@@ -135,7 +135,7 @@ def fetch_era5_nudging(date, dir2move, resolution=1.0):
                 'grid': f'{resolution}/{resolution}',
             }, 'era5_surf_nudging.grib')
         shutil.move('era5_surf_nudging.grib',
-                    os.path.join(dir2move, f"era5_surf_nudging_{date.strftime('%Y-%m-%d%H')}.grib"))
+                    os.path.join(dir2move, f"era5_surf_nudging_{date.strftime('%Y%m%d%H')}.grib"))
 
 
 def fetch_CAMS_CO2(date, dir2move):

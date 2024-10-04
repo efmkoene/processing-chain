@@ -98,10 +98,7 @@ def main(cfg):
                 shutil.copy(cfg.case_path / 'mypartab', cfg.icon_input_icbc / 'mypartab')
 
             # -- Run ERA5 processing script
-            subprocess.run(
-                ["bash", cfg.icon_input_icbc / f'icon_era5_nudging_{timestr}.sh'],
-                check=True,
-                stdout=subprocess.PIPE)
+            subprocess.run(["bash", nudging_job], check=True, stdout=subprocess.PIPE)
 
             # -- Copy CAMS processing script (icon_cams_nudging.job) in workdir
             cams_nudging_template = cfg.case_path / cfg.icon_species_nudgingjob
@@ -110,9 +107,7 @@ def main(cfg):
                 outfile.write(infile.read().format(cfg=cfg, filename=filename))
 
             # -- Run CAMS processing script
-            subprocess.run(["bash", cfg.icon_input_icbc / f'icon_cams_nudging_{timestr}.sh'],
-                           check=True,
-                           stdout=subprocess.PIPE)
+            subprocess.run(["bash", cams_nudging_job], check=True, stdout=subprocess.PIPE)
 
     # -- 4. Download ICOS CO2 data
     if cfg.obs_fetch_icos:
@@ -128,7 +123,7 @@ def main(cfg):
                    ])
 
     if cfg.obs_fetch_oco2:
-        # A user must do the following steps to allow
+        # A user must do the following steps to obtain access to OCO2 data
         # from getpass import getpass
         # import os
         # from subprocess import Popen
