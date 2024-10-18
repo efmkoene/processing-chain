@@ -52,4 +52,4 @@ ncrename -O -d nhym,lev cams_remapped.nc
 # 5. Place in inicond file
 ncks -A -v CO2 cams_remapped.nc {inicond_filename}
 ncap2 -s 'CO2_new[time,lev,ncells]=CO2; CO2=CO2_new;' {inicond_filename}
-ncks -C -O -x -v CO2_new {inicond_filename}
+ncks -C -O -x -v CO2_new {inicond_filename} {inicond_filename} 

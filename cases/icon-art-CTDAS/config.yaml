@@ -34,6 +34,7 @@ meteo:
     interpolate_CAMS_to_ERA5: True
     url: https://cds-beta.climate.copernicus.eu/api
     key: 1c2e45b1-dd08-4bc4-90c8-15c06304ae69
+    era5_splitjob: icon_era5_splitfiles.sh
     era5_inijob: icon_era5_inicond.sh
     era5_nudgingjob: icon_era5_nudging.sh
 
@@ -48,8 +49,10 @@ chem:
     
 obs:
     fetch_ICOS: True
-    ICOS_cookie_token: cpauthToken=WzE3MjcxODM4NTk5NjgsImVyaWsua29lbmVAZW1wYS5jaCIsIlNhbWwiXR4YD2F2BeORMmb6xC6b6emc8jk+SLcju2hKPUGcllTQa238n1qHvl9Nqwr16JLW3MKF0XwDos5eF9zR0t4mgd2MND2Fhq7KI+fEL8Dx8s+usFCCNOpP2ElvuNz/Z3ZEnZr5dyLEwnuo+1AoAugMkuT87DELhj5S4xuarBCIf7GcStTZzYHJAjWtxJ3VbUA5tepWULoqS+40EDagchfYz7A2fQYphTznAB5LlzxOEWMAn2/289UXZMrgce6Rlket3XAMM8TF17bDoHeh8js0kfdlbhZQ0RjbJ1Xjf4MGzYBLru5Rces49D5jQ3oSXF0AmsZnyFdcDjswccj68Nz8pc3X
+    ICOS_cookie_token: cpauthToken=WzE3MjkzNDMxNzIwNDQsImVyaWsua29lbmVAZW1wYS5jaCIsIlNhbWwiXR4FTcOofdFdurBv8MhnBQBBWQat65zbti2OCQ0t9tZd+rjAthGsn/WVSTwh/FadK3GpF0lh4Y1vxHMCuJKiytEMFREApm/O1TeA+2v1u7h8U0hAjn1Ao+ROzB/avbCzkI9vfxHOi2tTPOC4UomO99Dq7hZo0nNDYffeN4nxWd6kXoG3N6YKp5TzqZveL4GgWogZtaQm90+MdF5+NcPdxTM4mjD3qqsDG2TfwXttRd2WcSNhdAGE1b6o70wP1z22MewNhdCKmLLQH1mnhSXcfCJAwe67rugsSwAkWFpc0yusGylQKkdYiHYQw8vcYlkz1qgs1MNGB8URsHuETblnjqbG
+    ICOS_path: /scratch/snx3000/ekoene/ICOS/
     fetch_OCO2: True
+    OCO2_path: /scratch/snx3000/ekoene/OCO2
 
 input_files:
     inicond_filename: ./input/icon-art-global/icbc/era2icon_R2B03_2022060200.nc

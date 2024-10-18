@@ -8,21 +8,15 @@ module load daint-mc CDO NCO
 # -- Pre-processing
 # ---------------------------------
 
-rm -f {inicond_filename}
-
-# -- Convert the GRIB files to NetCDF
-cdo -t ecmwf -f nc copy era5_ml_{datestr}.grib era5_ml.nc
-cdo -t ecmwf -f nc copy era5_surf_{datestr}.grib era5_surf.nc
-
 # -- Put all variables in the same file
-cdo -O merge era5_ml.nc era5_surf.nc era5_original.nc
+cdo -O merge {era5_ml_file} {era5_surf_file} era5_original.nc
 
 # -- Change variable and coordinates names to be consistent with ICON nomenclature
 cdo setpartabn,mypartab,convert era5_original.nc tmp.nc
 
-# -- Order the variables alphabetically 
-ncks tmp.nc data_in.nc
-rm tmp.nc era5_surf.nc era5_ml.nc era5_original.nc
+# -- Order the variables alphabetically
+ncks -O tmp.nc data_in.nc
+rm tmp.nc era5_original.nc
 
 # ---------------------------------
 # -- Re-mapping
@@ -52,10 +46,10 @@ cdo setrtoc2,0.5,1.0,1,0 LSM_out_tmp.nc LSM_out.nc
 rm LSM_in.nc LSM_out_tmp.nc
 
 # -- Select surface sea variables defined only on sea
-ncks -h -v SST,CI data_in.nc datasea_in.nc
+ncks -O -h -v SST,CI data_in.nc datasea_in.nc
 
 # -- Select surface variables defined on both that must be remap differently on sea and on land
-ncks -h -v SKT,STL1,STL2,STL3,STL4,ALB_SNOW,W_SNOW,T_SNOW data_in.nc dataland_in.nc
+ncks -O -h -v SKT,STL1,STL2,STL3,STL4,ALB_SNOW,W_SNOW,T_SNOW data_in.nc dataland_in.nc
 
 # -----------------------------------------------------------------------------
 # -- Remap land and ocean area differently for variables
@@ -102,7 +96,7 @@ rm dataland_ocean_out.nc dataland_land_out.nc
 # --------------------------------------
 
 # -- Select all variables apart from these ones
-ncks -h -x -v SKT,STL1,STL2,STL3,STL4,SMIL1,SMIL2,SMIL3,SMIL4,ALB_SNOW,W_SNOW,T_SNOW,SST,CI,LSM data_in.nc datarest_in.nc
+ncks -O -h -x -v SKT,STL1,STL2,STL3,STL4,SMIL1,SMIL2,SMIL3,SMIL4,ALB_SNOW,W_SNOW,T_SNOW,SST,CI,LSM data_in.nc datarest_in.nc
 
 # -- Remap
 cdo -s remapdis,triangular-grid.nc datarest_in.nc era5_final.nc
@@ -129,7 +123,7 @@ rm LSM_out.nc dataland_out.nc
 wiltingp=(0 0.059 0.151 0.133 0.279 0.335 0.267 0.151) # wilting point
 fieldcap=(0 0.244 0.347 0.383 0.448 0.541 0.663 0.347) # field capacity
 
-ncks -h -v SMIL1,SMIL2,SMIL3,SMIL4,SLT data_in.nc swvl.nc
+ncks -O -h -v SMIL1,SMIL2,SMIL3,SMIL4,SLT data_in.nc swvl.nc
 rm data_in.nc
 
 # -- Loop over the soil types and apply the right constants
@@ -173,7 +167,7 @@ rm tmp.nc
 # -- Rename dimensions and order alphabetically
 ncrename -h -d cell,ncells era5_final.nc
 ncrename -h -d nv,vertices era5_final.nc
-ncks era5_final.nc {inicond_filename} 
+ncks -O era5_final.nc {inicond_filename} 
 rm era5_final.nc
 
 # -- Clean the repository

@@ -10,6 +10,7 @@ from . import tools, prepare_icon
 from pathlib import Path  # noqa: F401
 from .tools.interpolate_data import create_oh_for_restart, create_oh_for_inicond  # noqa: F401
 from .tools.fetch_external_data import fetch_era5, fetch_era5_nudging, fetch_CAMS_CO2, fetch_ICOS_data, fetch_OCO2
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 BASIC_PYTHON_JOB = False
 
@@ -36,109 +37,136 @@ def main(cfg):
     tools.change_logfile(cfg.logfile)
     logging.info("Prepare ICON-ART for CTDAS")
 
-    # -- 1. Download ERA5 data and create the initial conditions file
-    if cfg.meteo_fetch_era5:
-        # -- Fetch ERA5 data
-        logging.info(
-            f"Times considered now: {cfg.startdate_sim}, {cfg.enddate_sim}, {cfg.CTDAS_step}"
-        )
-        logging.info("Fetching ERA5 initial data")
-        fetch_era5(cfg.startdate_sim, cfg.icon_input_icbc, resolution=0.25)
+    # # -- 1. Download CAMS CO2 data (for a whole year)
+    # if cfg.chem_fetch_CAMS:
+    #     fetch_CAMS_CO2(
+    #         cfg.startdate_sim, cfg.icon_input_icbc
+    #     )  # This should be turned into a more central location I think.
 
-    # -- 2. Download CAMS CO2 data (for a whole year)
-    if cfg.chem_fetch_CAMS:
-        fetch_CAMS_CO2(
-            cfg.startdate_sim, cfg.icon_input_icbc
-        )  # This should be turned into a more central location I think.
+    # # -- 2. Fetch *all* ERA5 data (not just for initial conditions)
+    # if cfg.meteo_fetch_era5:
+    #     times = list(tools.iter_hours(cfg.startdate_sim, cfg.enddate_sim, cfg.meteo_nudging_step))
+    #     logging.info(f"Time range considered here: {times}")
 
-    # -- 3. Process data
-    # --- ERA5 inicond
-    logging.info("Preparing ERA5 preprocessing script for ICON")
-    era5_ini_template = cfg.case_path / cfg.meteo_era5_inijob
-    era5_ini_job = cfg.icon_input_icbc / cfg.meteo_era5_inijob
-    datestr = cfg.startdate_sim.strftime('%Y%m%d%H')
-    inicond_filename = cfg.icon_input_icbc / f"era_{datestr}_ini.nc"
-    with open(era5_ini_template, 'r') as infile, open(era5_ini_job,
-                                                      'w') as outfile:
-        outfile.write(infile.read().format(cfg=cfg,
-                                           inicond_filename=inicond_filename,
-                                           datestr=datestr))
-    shutil.copy(cfg.case_path / 'mypartab', cfg.icon_input_icbc / 'mypartab')
-    logging.info("Running ERA5 preprocessing script")
-    subprocess.run(["bash", era5_ini_job], check=True, stdout=subprocess.PIPE)
-    # --- CAMS inicond
-    logging.info("Preparing CAMS preprocessing script for ICON")
-    cams_ini_template = cfg.case_path / cfg.chem_cams_inijob
-    cams_ini_job = cfg.icon_input_icbc / cfg.chem_cams_inijob
-    with open(cams_ini_template, 'r') as infile, open(cams_ini_job,
-                                                      'w') as outfile:
-        outfile.write(infile.read().format(cfg=cfg,
-                                           inicond_filename=inicond_filename))
-    logging.info("Running CAMS preprocessing script")
-    subprocess.run(["bash", cams_ini_job], check=True, stdout=subprocess.PIPE)
+    #     # Split downloads in 3-day chunks, but run simultaneously
+    #     N = 3  
+    #     chunks = list(tools.split_into_chunks(times, N, cfg.meteo_nudging_step))
+    #     logging.info(f"Time range split up into chunks of {N} days, giving the following chunks: {chunks}")
 
-    # -- 3. If global nudging, download and process ERA5 and CAMS data
-    if cfg.meteo_interpolate_CAMS_to_ERA5:
-        for time in tools.iter_hours(cfg.startdate_sim,
-                                     cfg.enddate_sim,
-                                     step=cfg.meteo_nudging_step):
+    #     # Run fetch_era5 in parallel over chunks
+    #     output_filenames = [None] * len(chunks)  # Create a list to store filenames in order
+    #     with ThreadPoolExecutor(max_workers=4) as executor:
+    #         futures = {executor.submit(fetch_era5, chunk, cfg.icon_input_icbc, resolution=0.25, area=[60, -15, 35, 20]): i for i, chunk in enumerate(chunks)}
+    #         for future in futures:
+    #             index = futures[future]  # Get the index of the future
+    #             try:
+    #                 result = future.result()  # Get the result from the future
+    #                 output_filenames[index] = result  # Store the returned filename(s) in the correct order
+    #                 logging.info(f"Fetched data and saved to: {result}")
+    #             except Exception as exc:
+    #                 logging.error(f"Generated an exception: {exc}")
+    #     logging.info(f"All fetched files: {output_filenames}")
 
-            # -- Give a name to the nudging file
-            timestr = time.strftime('%Y%m%d%H')
-            filename = 'era_{timestr}_nudging.nc'.format(timestr=timestr)
+    #     # Split files (with multiple days/times) into individual files using bash script
+    #     era5_split_template = cfg.case_path / cfg.meteo_era5_splitjob
+    #     era5_split_job = cfg.icon_input_icbc / cfg.meteo_era5_splitjob
+    #     logging.info(f"Preparing ERA5 splitting script for ICON from {era5_split_template}")
+    #     ml_files = " ".join([f"{filenames[0]}" for filenames in output_filenames])
+    #     surf_files = " ".join([f"{filenames[1]}" for filenames in output_filenames])
+    #     with open(era5_split_template, 'r') as infile, open(era5_split_job, 'w') as outfile:
+    #         outfile.write(infile.read().format(
+    #             cfg=cfg,
+    #             ml_files=ml_files,
+    #             surf_files=surf_files
+    #         ))
+    #     logging.info(f"Running ERA5 splitting script {era5_split_job}")
+    #     subprocess.run(["bash", era5_split_job], check=True, stdout=subprocess.PIPE)
 
-            # -- If initial time, copy the initial conditions to be used as boundary conditions
-            if time == cfg.startdate_sim:
-                shutil.copy(cfg.icon_input_icbc / f'era_{timestr}_ini.nc',
-                            cfg.icon_input_icbc / filename)
-                continue
 
-            # -- Fetch ERA5 data
-            fetch_era5_nudging(time, cfg.icon_input_icbc, resolution=0.25)
+    # # -- 3. Process initial conditions data using bash script
+    # datestr = cfg.startdate_sim.strftime("%Y-%m-%dT%H:%M:%S")
+    # era5_ml_file = cfg.icon_input_icbc / f"era5_ml_{datestr}.nc"
+    # era5_surf_file = cfg.icon_input_icbc / f"era5_surf_{datestr}.nc"
+    # era5_ini_file = cfg.icon_input_icbc / f"era5_ini_{datestr}.nc"
+    # era5_ini_template = cfg.case_path / cfg.meteo_era5_inijob
+    # era5_ini_job = cfg.icon_input_icbc / cfg.meteo_era5_inijob
+    # with open(era5_ini_template, 'r') as infile, open(era5_ini_job,
+    #                                                   'w') as outfile:
+    #     outfile.write(infile.read().format(cfg=cfg,
+    #                                        era5_ml_file=era5_ml_file,
+    #                                        era5_surf_file=era5_surf_file,
+    #                                        inicond_filename=era5_ini_file))
+    # shutil.copy(cfg.case_path / 'mypartab', cfg.icon_input_icbc / 'mypartab')
+    # logging.info(f"Running ERA5 initial conditions script {era5_ini_job}")
+    # subprocess.run(["bash", era5_ini_job], check=True, stdout=subprocess.PIPE)
+    # # --- CAMS inicond
+    # logging.info("Preparing CAMS preprocessing script for ICON")
+    # cams_ini_template = cfg.case_path / cfg.chem_cams_inijob
+    # cams_ini_job = cfg.icon_input_icbc / cfg.chem_cams_inijob
+    # with open(cams_ini_template, 'r') as infile, open(cams_ini_job,
+    #                                                   'w') as outfile:
+    #     outfile.write(infile.read().format(cfg=cfg,
+    #                                        inicond_filename=era5_ini_file))
+    # logging.info("Running CAMS preprocessing initial conditions script")
+    # subprocess.run(["bash", cams_ini_job], check=True, stdout=subprocess.PIPE)
 
-            # -- Copy ERA5 processing script (icon_era5_nudging.job) in workdir
-            nudging_template = cfg.case_path / cfg.meteo_era5_nudgingjob
-            nudging_job = cfg.icon_input_icbc / f'icon_era5_nudging_{timestr}.sh'
-            with open(nudging_template, 'r') as infile, open(nudging_job,
-                                                             'w') as outfile:
-                outfile.write(infile.read().format(cfg=cfg, filename=filename))
+    # # -- 3. If global nudging, download and process ERA5 and CAMS data
+    # if cfg.meteo_interpolate_CAMS_to_ERA5:
+    #     for time in tools.iter_hours(cfg.startdate_sim,
+    #                                  cfg.enddate_sim,
+    #                                  step=cfg.meteo_nudging_step):
 
-            # -- Copy mypartab in workdir
-            if not os.path.exists(cfg.case_path / 'mypartab'):
-                shutil.copy(cfg.case_path / 'mypartab',
-                            cfg.icon_input_icbc / 'mypartab')
+    #         # -- Give a name to the nudging file
+    #         datestr = time.strftime("%Y-%m-%dT%H:%M:%S")
+    #         era5_ml_file = cfg.icon_input_icbc / f"era5_ml_{datestr}.nc"
+    #         era5_surf_file = cfg.icon_input_icbc / f"era5_surf_{datestr}.nc"
+    #         era5_nudge_file = cfg.icon_input_icbc / f"era5_nudge_{datestr}.nc"
 
-            # -- Run ERA5 processing script
-            subprocess.run(["bash", nudging_job],
-                           check=True,
-                           stdout=subprocess.PIPE)
+    #         # -- Copy ERA5 processing script (icon_era5_nudging.job) in workdir
+    #         nudging_template = cfg.case_path / cfg.meteo_era5_nudgingjob
+    #         nudging_job = cfg.icon_input_icbc / f'icon_era5_nudging_{datestr}.sh'
+    #         with open(nudging_template, 'r') as infile, open(nudging_job,
+    #                                                          'w') as outfile:
+    #             outfile.write(infile.read().format(cfg=cfg,
+    #                                                era5_ml_file=era5_ml_file,
+    #                                                era5_surf_file=era5_surf_file,
+    #                                                filename=era5_nudge_file))
 
-            # -- Copy CAMS processing script (icon_cams_nudging.job) in workdir
-            cams_nudging_template = cfg.case_path / cfg.icon_species_nudgingjob
-            cams_nudging_job = cfg.icon_input_icbc / f'icon_cams_nudging_{timestr}.sh'
-            with open(cams_nudging_template,
-                      'r') as infile, open(cams_nudging_job, 'w') as outfile:
-                outfile.write(infile.read().format(cfg=cfg, filename=filename))
+    #         # -- Copy mypartab in workdir
+    #         if not os.path.exists(cfg.case_path / 'mypartab'):
+    #             shutil.copy(cfg.case_path / 'mypartab',
+    #                         cfg.icon_input_icbc / 'mypartab')
 
-            # -- Run CAMS processing script
-            subprocess.run(["bash", cams_nudging_job],
-                           check=True,
-                           stdout=subprocess.PIPE)
+    #         # -- Run ERA5 processing script
+    #         subprocess.run(["bash", nudging_job],
+    #                        check=True,
+    #                        stdout=subprocess.PIPE)
 
+    #         # -- Copy CAMS processing script (icon_cams_nudging.job) in workdir
+    #         logging.info("Preparing CAMS preprocessing nudging script for ICON")
+    #         cams_nudge_template = cfg.case_path / cfg.chem_cams_nudgingjob
+    #         cams_nudge_job = cfg.icon_input_icbc / cfg.chem_cams_nudgingjob
+    #         with open(cams_nudge_template, 'r') as infile, open(cams_nudge_job,
+    #                                                         'w') as outfile:
+    #             outfile.write(infile.read().format(cfg=cfg,
+    #                                                filename=era5_nudge_file))
+    #         subprocess.run(["bash", cams_nudge_job], check=True, stdout=subprocess.PIPE)
+    
     # -- 4. Download ICOS CO2 data
-    if cfg.obs_fetch_icos:
+    if cfg.obs_fetch_ICOS:
         # -- This requires you to have accepted the ICOS license in your profile.
         #    So, login to https://cpauth.icos-cp.eu/home/ , check the box, and
         #    copy the cookie token on the bottom as your ICOS_cookie_token.
-        fetch_ICOS_data(cookie_token=cfg.ICOS_cookie_token,
-                        start_date=cfg.startdate_sim,
-                        end_date=cfg.enddate_sim,
-                        save_path=cfg.ICOS_path,
+        fetch_ICOS_data(cookie_token=cfg.obs_ICOS_cookie_token,
+                        start_date=cfg.startdate_sim.strftime("%d-%m-%Y"),
+                        end_date=cfg.enddate_sim.strftime("%d-%m-%Y"),
+                        save_path=cfg.obs_ICOS_path,
                         species=[
                             'co2',
                         ])
+        process_ICOS_data() # Setup the post-processing, which concatenates all the data into one file
 
-    if cfg.obs_fetch_oco2:
+    if cfg.obs_fetch_OCO2:
         # A user must do the following steps to obtain access to OCO2 data
         # from getpass import getpass
         # import os
@@ -158,12 +186,13 @@ def main(cfg):
         #     file.write('HTTP.NETRC={}.netrc'.format(homeDir))
         #     file.close()
         # Popen('chmod og-rw ~/.netrc', shell=True)
-        fetch_OCO2(x,
-                   y,
+        fetch_OCO2(cfg.startdate_sim,
+                   cfg.enddate_sim,
                    -8,
                    30,
                    35,
                    65,
-                   "/capstor/scratch/cscs/ekoene/temp",
+                   cfg.obs_OCO2_path,
                    product="OCO2_L2_Lite_FP_11.1r")
+        process_OCO2() # post-process all the OCO2 data
     logging.info("OK")

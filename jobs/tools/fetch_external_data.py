@@ -20,7 +20,7 @@ from subprocess import Popen
 from datetime import datetime, timedelta
 
 
-def fetch_CDS(product, date, levels, params, resolution, outloc):
+def fetch_CDS(product, date, levels, params, resolution, area, outloc):
     # Obtain CDS authentification from file
     url_cmd = f"grep 'cds' ~/.cdsapirc"
     url = os.popen(url_cmd).read().strip().split(": ")[1]
@@ -73,6 +73,7 @@ def fetch_CDS(product, date, levels, params, resolution, outloc):
             paramstr,
             'grid':
             f'{resolution}/{resolution}',
+            **({'area' : area} if area is not None else {}),
             **({
                 'class': 'ea',
                 'type': 'an',
@@ -87,9 +88,12 @@ def fetch_CDS(product, date, levels, params, resolution, outloc):
         }, outloc)
 
 
-def fetch_era5(date, dir2move, resolution=1.0):
-    outfile = dir2move / f"era5_ml_{date.strftime('%Y-%m-%d')}.grib"
-    if not os.path.isfile(outfile):
+def fetch_era5(date, dir2move, resolution=1.0, area=None):
+    if isinstance(date, list):
+        outfile_3D = dir2move / f"era5_ml_{date[0].strftime('%Y-%m-%d')}_{date[-1].strftime('%Y-%m-%d')}.grib"
+    else:
+        outfile_3D = dir2move / f"era5_ml_{date.strftime('%Y-%m-%d')}.grib"
+    if not os.path.isfile(outfile_3D):
         # -- CRWC : Specific rain water content              - 75
         # -- CSWC : Specific snow water content              - 76
         # -- T    : Temperature                             - 130
@@ -100,11 +104,14 @@ def fetch_era5(date, dir2move, resolution=1.0):
         # -- CLWC : Specific cloud liquid water content     - 246
         # -- CIWC : Specific cloud ice water content        - 247
         fetch_CDS('reanalysis-era5-complete', date, '1/to/137',
-                  [75, 76, 130, 131, 132, 133, 135, 246, 247], resolution,
-                  outfile)
+                  [75, 76, 130, 131, 132, 133, 135, 246, 247], resolution, area,
+                  outfile_3D)
 
-    outfile = dir2move / f"era5_surf_{date.strftime('%Y-%m-%d')}.grib"
-    if not os.path.isfile(outfile):
+    if isinstance(date, list):
+        outfile_surface = dir2move / f"era5_surf_{date[0].strftime('%Y-%m-%d')}_{date[-1].strftime('%Y-%m-%d')}.grib"
+    else:
+        outfile_surface = dir2move / f"era5_surf_{date.strftime('%Y-%m-%d')}.grib"
+    if not os.path.isfile(outfile_surface):
         # -- CI   : Sea Ice Cover                   - 31
         # -- ASN  : Snow albedo                     - 32
         # -- RSN  : Snow density                    - 33
@@ -128,10 +135,12 @@ def fetch_era5(date, dir2move, resolution=1.0):
         fetch_CDS('reanalysis-era5-single-levels', date, None, [
             31, 32, 33, 34, 39, 40, 41, 42, 43, 129, 134, 139, 141, 170, 172,
             183, 198, 235, 236, 238
-        ], resolution, outfile)
+        ], resolution, area, outfile_surface)
+    
+    return outfile_3D, outfile_surface
 
 
-def fetch_era5_nudging(date, dir2move, resolution=1.0):
+def fetch_era5_nudging(date, dir2move, resolution=1.0, area=None):
     """Fetch ERA5 data from ECMWF for global nudging
 
     Parameters
@@ -139,18 +148,25 @@ def fetch_era5_nudging(date, dir2move, resolution=1.0):
     date : initial date to fetch
 
     """
-    outfile = dir2move / f"era5_ml_nudging_{date.strftime('%Y-%m-%d%H')}.grib"
-    if not os.path.isfile(outfile):
+    if isinstance(date, list):
+        outfile_3D = dir2move / f"era5_ml_nudging_{date[0].strftime('%Y-%m-%d')}_{date[-1].strftime('%Y-%m-%d')}.grib"
+    else:
+        outfile_3D = dir2move / f"era5_ml_nudging_{date.strftime('%Y-%m-%d')}.grib"
+    if not os.path.isfile(outfile_3D):
         fetch_CDS('reanalysis-era5-complete', date, '1/to/137',
-                  [75, 76, 130, 131, 132, 133, 135, 246, 247], resolution,
-                  outfile)
+                  [75, 76, 130, 131, 132, 133, 135, 246, 247], resolution, area,
+                  outfile_3D)
 
-    outfile = dir2move / f"era5_surf_nudging_{date.strftime('%Y-%m-%d%H')}.grib"
-    if not os.path.isfile(outfile):
+    if isinstance(date, list):
+        outfile_surface = dir2move / f"era5_surf_nudging_{date[0].strftime('%Y-%m-%d')}_{date[-1].strftime('%Y-%m-%d')}.grib"
+    else:
+        outfile_surface = dir2move / f"era5_surf_nudging_{date.strftime('%Y-%m-%d')}.grib"
+    if not os.path.isfile(outfile_surface):
         fetch_CDS('reanalysis-era5-single-levels', date, None, [
-            31, 32, 33, 34, 39, 40, 41, 42, 43, 129, 134, 139, 141, 170, 172,
-            183, 198, 235, 236, 238
-        ], resolution, outfile)
+            129, 134
+        ], resolution, area, outfile_surface)
+
+    return outfile_3D, outfile_surface
 
 
 def fetch_CAMS_CO2(date, dir2move):
@@ -516,3 +532,255 @@ def fetch_OCO2(starttime,
             )
 
     print('Finished')
+
+def process_OCO2():
+    ######### Some messages ######### 
+    print('=============================================================================') 
+    print(' Pre-processing Observation product, readable for CTDAS-ICON.' ) 
+    print(' Data will be filtered base on a given ICON domain.' ) 
+    print(' David Ho, MPI-BGC Jena' ) 
+    print('=============================================================================') 
+    print('') 
+    print('Loading neccessary packages...') 
+    ## Import 
+    import numpy as np 
+    import pandas as pd 
+    import xarray as xr 
+    import glob 
+    from netCDF4 import Dataset 
+    import datetime 
+    import time as TIME 
+    import warnings 
+    import os
+    warnings.filterwarnings("ignore") 
+    print('') 
+    #-- retrieve start time 
+    t1 = TIME.time() 
+    ######### Output path ########### 
+    nc_out = '//scratch/snx3000/ekoene/OCO-2_filtered/' 
+    if not os.path.exists(nc_out):
+        os.makedirs(nc_out)
+        print(f"Output folder '{nc_out}' created successfully.")
+    else:
+        print(f"Output folder '{nc_out}' already exists.")
+    ######### Time control ########### 
+    Year = 2018 
+    for month in range(1,13):
+        if month in [4, 6, 9, 11]: 
+            daymax = 30 
+        elif month == 2: 
+            daymax = 28 
+        else: 
+            daymax = 31 
+
+        ndays = np.arange(1, daymax+1) # 1st~31th 
+        ######### Observation ########### 
+        file_list = sorted( glob.glob('/scratch/snx3000/ekoene/OCO-2/OCO2_L2_Lite_FP.11r:oco2_LtCO2_*') ) 
+        if len(file_list) == 0: 
+            raise ValueError("File list is empty, stopping here!") 
+
+        ########## ICON grid ############ 
+        mainpath = '/users/ekoene/CTDAS_inputs/' 
+        grid_file = mainpath + '/icon_europe_DOM01.nc' 
+        ICON_GRID = xr.open_dataset(grid_file) 
+        # Convert an array of size 1 to its scalar equivalent. 
+        lon_min = np.min(ICON_GRID.clon.values) 
+        lon_max = np.max(ICON_GRID.clon.values) 
+        lat_min = np.min(ICON_GRID.clat.values) 
+        lat_max = np.max(ICON_GRID.clat.values) 
+        print('ICON grid extends:') 
+        print('Longitude min. %7.4f, max. %7.4f' % (np.rad2deg(lon_min),np.rad2deg(lon_max)) ) 
+        print('Latitude min. %7.4f, max. %7.4f' % (np.rad2deg(lat_min),np.rad2deg(lat_max)) ) 
+        print('') 
+        ########## Set bounds to filter ########## 
+        offset = 1.2 
+        sub_lon_min = np.rad2deg(lon_min) + offset 
+        sub_lon_max = np.rad2deg(lon_max) - offset 
+        sub_lat_min = np.rad2deg(lat_min) + offset 
+        sub_lat_max = np.rad2deg(lat_max) - offset 
+        print('To avoid cells at the domain boundary, subtracting: %s degree.' %offset) 
+        print('Filtered extends:') 
+        print('Longitude min. %7.4f, max. %7.4f' %(sub_lon_min, sub_lon_max) ) 
+        print('Latitude min. %7.4f, max. %7.4f' %(sub_lat_min, sub_lat_max) ) 
+        print('') 
+
+        ######## Begin Production ############# 
+        Total_nobs_before = np.array([]) 
+        Total_nobs_after = np.array([]) 
+        for day in ndays: 
+            print('Processing: (%s/%s)' %(day, len(ndays)) ) 
+            ######### Read data #########  
+            try: 
+                # Find a file in the file list
+                for file_name in file_list:
+                    if f"OCO2_L2_Lite_FP.11r:oco2_LtCO2_{str(Year)[2:]}{month:02d}{day:02d}" in file_name:
+                        s5p_file = file_name 
+                        print('Opening file: %s' %s5p_file) 
+                        s5p_data = Dataset(s5p_file) 
+            except: 
+                print('file %s not found.' %s5p_file) 
+                print('Skipping...') 
+                print('') 
+                continue # Continue to next iteration. 
+
+        ######## Filter base of ICON domain ######## 
+            date_list = [] 
+            for timestamp in s5p_data['time'][:]: 
+                value = datetime.datetime.fromtimestamp(timestamp) 
+                date_list.append(value) 
+            
+            dictionary = { 
+            'date_time' : date_list[:], 
+            'raw_time' : s5p_data['time'][:], 
+            'xco2': s5p_data['xco2'][:], 
+            'lat': s5p_data['latitude'][:], 
+            'lon': s5p_data['longitude'][:], 
+            'qf': s5p_data['xco2_quality_flag'][:], # quality flag 0 = good; 1 = bad.
+            } 
+            df_pixels = pd.DataFrame(data=dictionary) 
+
+            ## Filter base on ICON domain ## 
+            inside_domain_flag = ( ( df_pixels['lon'] > sub_lon_min ) & ( df_pixels['lon'] < sub_lon_max )  & 
+                                ( df_pixels['lat'] > sub_lat_min ) & ( df_pixels['lat'] < sub_lat_max )  *
+                                ( df_pixels['qf'] == 0) )
+
+            # -- Old hard coded settings: 
+            # inside_domain_flag = ( ( df_pixels['lon'] > -20 ) & ( df_pixels['lon'] < 58 ) \ 
+            # & ( df_pixels['lat'] > 32 ) & ( df_pixels['lat'] < 69 ) ) 
+            ## Get the indexes from data frame ## 
+            indexes = df_pixels[inside_domain_flag].index 
+
+            ## Some messages 
+            Before = len(s5p_data.variables['xco2'][:]) 
+            print('It had %i data' %Before) 
+            Total_nobs_before = np.append(Total_nobs_before, Before) 
+
+            After = len(s5p_data.variables['xco2'][indexes]) 
+            print('Now has %i' %After) 
+            Total_nobs_after = np.append(Total_nobs_after, After) 
+            if After == 0:
+                print('skipping')
+                continue
+
+            ######### Create/Write netCDF ######### 
+            _, tail = os.path.split(s5p_file)
+            output_path = os.path.join(nc_out, 'OCO2_%04d%02d%02d_ctdas.nc' %(Year, month, day)) 
+            ncfile = Dataset( output_path, mode='w', format='NETCDF4' ) 
+            print('Writing %s from %s' %(output_path, s5p_file)) 
+
+            ######### Def. attribute ######### 
+            ncfile.level_def = 'pressure_boundaries' 
+            ncfile.retrieval_id = tail
+            ncfile.creator_name = 'Erik Koene (Empa)' 
+            ncfile.date_created = str( datetime.datetime.now() ) 
+            ######### Create dimension ######### 
+            #ncfile.createDimension( 'soundings', s5p_data.dimensions['sounding_dim'].size ) # Select all 
+            ncfile.createDimension( 'soundings', s5p_data['xco2'][indexes].size ) # Select the indexes 
+            ncfile.createDimension( 'levels', s5p_data.dimensions['levels'].size ) 
+            ncfile.createDimension( 'layers', s5p_data.dimensions['levels'].size ) 
+            ncfile.createDimension( 'epoch_dimension', s5p_data.dimensions['epoch_dimension'].size )
+            ######### Set variables ######### 
+            ### Lat/Lon 
+            lat = ncfile.createVariable('latitude', np.float32, ('soundings')) 
+            lat.units = 'degrees_north' 
+            #lat[:] = s5p_data.variables['latitude'][:] 
+            lat[:] = s5p_data.variables['latitude'][indexes] 
+            lon = ncfile.createVariable('longitude', np.float32, ('soundings')) 
+            lon.units = 'degrees_east' 
+            #lon[:] = s5p_data.variables['longitude'][:] 
+            lon[:] = s5p_data.variables['longitude'][indexes] 
+            ### Time 
+            date = ncfile.createVariable('date', np.uint32, ('soundings', 'epoch_dimension')) 
+            date.units = 'seconds since 1970-01-01 00:00:00' # 
+            date.long_name = 'date_time' 
+            # Converting... 
+            A = np.array([], np.uint32) 
+            for timestamp in s5p_data['time'][indexes]: 
+                value = datetime.datetime.fromtimestamp(timestamp) 
+                time = np.array([value.year, value.month, value.day, value.hour, value.minute, value.second, value.microsecond], np.uint32) 
+                A = np.concatenate([A, time], axis=0) 
+            B = A.reshape( int(len(A)/7), 7 ) 
+            date[:] = B[:] 
+            ##### Obs 
+            obs = ncfile.createVariable('obs', np.float32, ('soundings')) 
+            obs.units = '1e-6 [ppm]' 
+            obs.long_name = 'column-averaged dry air mole fraction of atmospheric co2' 
+            obs.comment = 'Retrieved column-averaged dry air mole fraction of atmospheric carbon dioxide (XCO2) in ppm for CTDAS' 
+            obs[:] = s5p_data.variables['xco2'][indexes] # Keep ppm units
+            ### qa flag 
+            qa_f = ncfile.createVariable('quality_flag', np.int8, ('soundings')) 
+            qa_f.flag_values= '[0, 1]' 
+            qa_f.long_name = 'quality flag for the retrieved column-averaged dry air mole fraction of atmospheric methane' 
+            qa_f.comment = '0=good, 1=bad' 
+            qa_f[:] = s5p_data.variables['xco2_quality_flag'][indexes] 
+            ##### avg kernel 
+            avg_kernel = ncfile.createVariable('averaging_kernel', np.float32, ('soundings', 'layers')) 
+            avg_kernel.units = '1' 
+            avg_kernel.long_name = 'xco2 averaging kernel' 
+            avg_kernel.comment = 'Represents the altitude sensitivity of the retrieval as a function of pressure. All values represent layer averages within the corresponding pressure levels. Profiles are ordered from surface to top of atmosphere.' 
+            #avg_kernel[:] = s5p_data.variables['xch4_averaging_kernel'][:] 
+            avg_kernel[:] = s5p_data.variables['xco2_averaging_kernel'][:][indexes] 
+            ### surface_pressure 
+            psurf = ncfile.createVariable('surface_pressure', np.float32, ('soundings')) 
+            psurf.long_name = 'Surface pressure' 
+            psurf.comment = 'Sliced from: OCO2_pressure_levels[:, 0] in Python. Pressure levels defined at the same levels as the averaging kernel and a priori profile layers. Levels were ordered from top of atmosphere to surface.' 
+            psurf.unit = 'hPa' 
+            #psurf[:] = s5p_data.variables['pressure_levels'][:, 0] 
+            psurf[:] = s5p_data.variables['pressure_levels'][indexes, -1] 
+            ##### pressure_levels 
+            pres_lvls = ncfile.createVariable('pressure_levels', np.float32, ('soundings', 'layers')) 
+            pres_lvls.long_name = 'Pressure levels' 
+            pres_lvls.comment = 'Sliced from: s5p_pressure_levels[:, 1:], Python. Pressure levels define the boundaries of the averaging kernel and a priori profile layers. Levels were ordered from top of atmosphere to surface.' 
+            pres_lvls.unit = 'hPa'  
+            pres_lvls[:] = s5p_data.variables['pressure_levels'][:, ::-1][indexes] 
+            #### pressure_weighting_function 
+            pwf = ncfile.createVariable('pressure_weighting_function', np.float32, ('soundings', 'layers')) 
+            pwf.long_name = 'Pressure weighting function' 
+            pwf.comment = 'Layer dependent weights needed to apply the averaging kernels.' 
+            pwf[:] = s5p_data.variables['pressure_weight'][:,::-1][indexes] 
+            ### prior_profile 
+            prior_profile = ncfile.createVariable('prior_profile', np.float32, ('soundings', 'layers')) 
+            prior_profile.units = '1e-6 [ppm]' 
+            prior_profile.long_name = 'a priori dry air mole fraction profile of atmospheric CO2' 
+            prior_profile.comment = 'A priori dry-air mole fraction profile of atmospheric CO2 in ppm. All values represent layer averages within the corresponding pressure levels. Profiles are ordered from top of atmosphere to the surface.' 
+            prior_profile[:] = s5p_data.variables['co2_profile_apriori'][:,::-1][indexes]
+            ### prior 
+            prior = ncfile.createVariable('prior', np.float32, ('soundings')) 
+            prior.units = '1e-6 [ppm]' 
+            prior.long_name = 'Prior' 
+            prior.comment = 'The a priori CO2 profile uses the same formulation as used for TCCON GGG2020 retrievals' 
+            prior[:] = s5p_data.variables["xco2_apriori"][indexes]
+            ### uncertainty 
+            unc = ncfile.createVariable('uncertainty', np.float32, ('soundings')) 
+            unc.units = '1e-6 [ppm]' 
+            unc.long_name = '1-sigma uncertainty of the retrieved column-averaged dry air mole fraction of atmospheric carbon dioxide' 
+            unc.comment = '1-sigma uncertainty of the retrieved column-averaged dry air mole fraction of atmospheric carbon dioxide (XCO2) in ppm' 
+            unc[:] = s5p_data.variables['xco2_uncertainty'][indexes]
+
+            ### Extras 
+            # unique sounding_id 
+            sounding_id = ncfile.createVariable('sounding_id', np.int64, ('soundings')) 
+            sounding_id.comment ='Some numbers unique per observation' 
+            # sounding_id[:] = s5p_data.variables['sounding_id'][indexes]
+            #s5p_obs = s5p_data.variables['xch4'][:] 
+            s5p_obs = s5p_data.variables['xco2'][indexes] 
+            to_add = int('%04d%02d%02d0000000' %(Year, month, day)) # datetime + 9 zeros 
+            sounding_id[:] = np.arange(len(s5p_obs)) + to_add 
+            print('Added %s to sounding id, unique per observation' %to_add) 
+
+            # nobs 
+            #nobs = ncfile.createVariable('nobs', np.unit32, ('soundings')) 
+            #nobs.comment ='Number of observations' 
+            #nobs[:] = 
+            #print(ncfile) 
+            ncfile.close() 
+            print('Done! Closing netcdf, proceeding to the next file.') 
+            print('') 
+
+    t2 = TIME.time() 
+    print('') 
+    print('All done! Wallclock time: %0.3f seconds' % (t2-t1)) 
+    sum_before = np.sum(Total_nobs_before) 
+    sum_after = np.sum(Total_nobs_after) 
+    print('Summary:') 
+    print('Original nobs: %i. Filtered nobs: %i.' %(sum_before, sum_after) ) 

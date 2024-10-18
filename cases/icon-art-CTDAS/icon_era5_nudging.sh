@@ -10,19 +10,15 @@ module load daint-mc NCO CDO
 
 rm -f {filename}
 
-# -- Convert the GRIB files to NetCDF
-cdo -t ecmwf -f nc copy era5_ml_nudging.grib era5_ml_nudging.nc
-cdo -t ecmwf -f nc copy era5_surf_nudging.grib era5_surf_nudging.nc
-
 # -- Put all variables in the same file
-cdo -O merge era5_ml_nudging.nc era5_surf_nudging.nc era5_original_nudging.nc
+cdo -O merge {era5_ml_file} {era5_surf_file} era5_original.nc
 
 # -- Change variable and coordinates names to be consistent with ICON nomenclature
-cdo setpartabn,mypartab,convert era5_original_nudging.nc tmp.nc
+cdo setpartabn,mypartab,convert era5_original.nc tmp.nc
 
 # -- Order the variables alphabetically 
-ncks tmp.nc data_in.nc
-rm tmp.nc era5_surf_nudging.nc era5_ml_nudging.nc era5_original_nudging.nc
+ncks -O tmp.nc data_in.nc
+rm tmp.nc era5_original.nc
 
 # ---------------------------------
 # -- Re-mapping
@@ -56,7 +52,7 @@ rm tmp.nc
 # -- Rename dimensions and order alphabetically
 ncrename -h -d cell,ncells era5_final.nc
 ncrename -h -d nv,vertices era5_final.nc
-ncks era5_final.nc {filename}
+ncks -O era5_final.nc {filename}
 rm era5_final.nc
 
 

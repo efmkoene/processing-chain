@@ -112,6 +112,13 @@ def iter_hours(startdate, enddate, step=1):
         current += timedelta(hours=step)
 
 
+def split_into_chunks(times, N, step):
+    """Splits the iter_hours iterable into chunks of N days (converted to hours based on step)."""
+    chunk_size = 24 * N // step  # Each N-day chunk corresponds to these many hours
+    for i in range(0, len(times), chunk_size):
+        yield times[i:i + chunk_size]
+
+
 def prepare_message(logfile_path):
     """Shortens the logfile to be sent via mail if it is too long.
 
