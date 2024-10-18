@@ -49,7 +49,7 @@ def main(cfg):
     #     logging.info(f"Time range considered here: {times}")
 
     #     # Split downloads in 3-day chunks, but run simultaneously
-    #     N = 3  
+    #     N = 3
     #     chunks = list(tools.split_into_chunks(times, N, cfg.meteo_nudging_step))
     #     logging.info(f"Time range split up into chunks of {N} days, giving the following chunks: {chunks}")
 
@@ -81,7 +81,6 @@ def main(cfg):
     #         ))
     #     logging.info(f"Running ERA5 splitting script {era5_split_job}")
     #     subprocess.run(["bash", era5_split_job], check=True, stdout=subprocess.PIPE)
-
 
     # # -- 3. Process initial conditions data using bash script
     # datestr = cfg.startdate_sim.strftime("%Y-%m-%dT%H:%M:%S")
@@ -151,7 +150,7 @@ def main(cfg):
     #             outfile.write(infile.read().format(cfg=cfg,
     #                                                filename=era5_nudge_file))
     #         subprocess.run(["bash", cams_nudge_job], check=True, stdout=subprocess.PIPE)
-    
+
     # -- 4. Download ICOS CO2 data
     if cfg.obs_fetch_ICOS:
         # -- This requires you to have accepted the ICOS license in your profile.
@@ -164,7 +163,8 @@ def main(cfg):
                         species=[
                             'co2',
                         ])
-        process_ICOS_data() # Setup the post-processing, which concatenates all the data into one file
+        process_ICOS_data(
+        )  # Setup the post-processing, which concatenates all the data into one file
 
     if cfg.obs_fetch_OCO2:
         # A user must do the following steps to obtain access to OCO2 data
@@ -194,5 +194,5 @@ def main(cfg):
                    65,
                    cfg.obs_OCO2_path,
                    product="OCO2_L2_Lite_FP_11.1r")
-        process_OCO2() # post-process all the OCO2 data
+        process_OCO2()  # post-process all the OCO2 data
     logging.info("OK")
