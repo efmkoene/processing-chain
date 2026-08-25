@@ -1,0 +1,121 @@
+# Configuration file for the 'icon-art-ctdas' case with ICON.
+#
+# Scaffold case for testing get_icbc_data / remap_icbc / get_obs_data /
+# prepare_oem. Deliberately does not yet wire up the actual ICON run or
+# CTDAS itself (prepare_ctdas / ctdas jobs) -- that comes later.
+#
+# From the `icon-wcp` environment:
+# git clone --depth 1 --recurse-submodules --shallow-submodules -b jasperfix git@github.com:efmkoene/spack-c2sm.git
+# - spack install nco@4.9.0
+# - spack install icontools
+# - spack install cdo
+
+workflow: icon
+constraint: gpu
+run_on: cpu
+compute_queue: normal
+nodes: 1
+ntasks_per_node: 280
+startdate: 2018-01-01T00:00:00Z
+enddate: 2018-12-31T23:59:59Z
+restart_step: PT10D # = CTDAS cycle length
+
+####### Tracer options
+# The tracers XML file is generated on-the-fly by prepare_oem
+tracers:
+    TRCO2_A:
+        oem_cat: "A-CO2, B-CO2, C-CO2, D-CO2, E-CO2, F1-CO2, F2-CO2, F3-CO2, F4-CO2, G-CO2, H-CO2, I-CO2, J-CO2, K-CO2, L-CO2"
+        oem_vp:  "A-CO2, B-CO2, C-CO2, D-CO2, E-CO2, F1-CO2, F2-CO2, F3-CO2, F4-CO2, G-CO2, H-CO2, I-CO2, J-CO2, K-CO2, L-CO2"
+        oem_tp:  "A-CO2, B-CO2, C-CO2, D-CO2, E-CO2, F1-CO2, F2-CO2, F3-CO2, F4-CO2, G-CO2, H-CO2, I-CO2, J-CO2, K-CO2, L-CO2"
+    TRCO2_BG:
+        init_name: "CO2"
+    CO2_RA:
+        oem_ftype: "resp"
+    CO2_GPP:
+        oem_ftype: "gpp"
+    TRCO2_A-XXX:
+        bg: "TRCO2_BG"
+        ra: "CO2_RA"
+        gpp: "CO2_GPP"
+    biosource:
+        oem_cat: "GFAS1, GFAS2, GFAS3, GFAS4, GFAS5, GFAS6, GFAS7, GFAS8, GFAS9, GFAS10, allcropsource, allwoodsource, lakeriveremis, cflx"
+        oem_vp:  "L-CO2, L-CO2, L-CO2, L-CO2, L-CO2, L-CO2, L-CO2, L-CO2, L-CO2, L-CO2,   L-CO2,         L-CO2,         L-CO2,         L-CO2"
+        oem_tp:  "GFAS1, GFAS2, GFAS3, GFAS4, GFAS5, GFAS6, GFAS7, GFAS8, GFAS9, GFAS10,  L-CO2,         L-CO2,         L-CO2,         L-CO2"
+    biosink:
+        oem_cat: "biofuelcropsource, biofuelwoodsource, mflx"
+        oem_vp:  "L-CO2,             L-CO2,             L-CO2"
+        oem_tp:  "L-CO2,             L-CO2,             L-CO2"
+    EM_TRCO2_A:
+        oem_cat: "A-CO2, B-CO2, C-CO2, D-CO2, E-CO2, F1-CO2, F2-CO2, F3-CO2, F4-CO2, G-CO2, H-CO2, I-CO2, J-CO2, K-CO2, L-CO2"
+        oem_vp:  "A-CO2, B-CO2, C-CO2, D-CO2, E-CO2, F1-CO2, F2-CO2, F3-CO2, F4-CO2, G-CO2, H-CO2, I-CO2, J-CO2, K-CO2, L-CO2"
+        oem_tp:  "A-CO2, B-CO2, C-CO2, D-CO2, E-CO2, F1-CO2, F2-CO2, F3-CO2, F4-CO2, G-CO2, H-CO2, I-CO2, J-CO2, K-CO2, L-CO2"
+    EM_CO2_RA:
+        oem_ftype: "resp"
+    EM_CO2_GPP:
+        oem_ftype: "gpp"
+
+
+####### CTDAS options
+# Only the subset that prepare_oem / get_obs_data need (tracer ensemble
+# sizing, OEM lambda regions, and the ICOS/OCO2 fetch toggles). The rest of
+# the old CTDAS section (ctdas_path, ctdas_patch, global_inputs,
+# covariancematrix_definition, ...) belongs to the prepare_ctdas / ctdas
+# jobs, not built yet.
+CTDAS:
+    nensembles: 24
+    propagate_bg: False
+    runthrough: True
+    nboundaries: 8
+    lambdas: # The first 16 lambdas must be the respiration and uptake ones [even if not relevant, e.g., for a CH4 simulation], followed by the oem_cat categories in the xml file, in order of appearance
+        - 1,1,1,1,1,1,1,1 # Respiration (Evergreen Forest, Deciduous Forest, Mixed Forest, Shrubland, Savanna, Cropland, Grassland, Urban/Other)
+        - 2,2,2,2,2,2,2,2 # Uptake (E, D, M, S, SV, C, G, U)
+        - 3,3,3,3,3,3,3,3,3,3,3,3,3,3,3 # Anthropogenic CO2 (ensemble tracer categories that are optimized)
+    obs:
+        # Run the 'authentification.ipynb' notebook to get access to ICOS and/or NASA Earthdata (OCO2) data
+        ICOS:
+            fetch: True
+            path: /capstor/scratch/cscs/ekoene/ICOS/
+        OCO2:
+            fetch: True
+            path: /capstor/scratch/cscs/ekoene/OCO2
+
+# Which strategy prepare_oem uses to partition cells into lambda-/boundary-
+# regions. Both are optional -- omit either (or both) to fall back to the
+# defaults (per_cell / angular_quadrant). Built-in names, from
+# jobs/tools/oem_regions.py:
+#   lambda_regions:   per_cell (default), land_ocean_boxes, parent_grid
+#   boundary_regions: angular_quadrant (default), compass_walk
+# A name not in that list is instead treated as a path (relative to this
+# case directory) to a case-provided Python file defining the same
+# function, for anything not covered by the built-ins.
+prepare_oem:
+    lambda_regions: land_ocean_boxes
+    boundary_regions: compass_walk
+
+cdo_nco_cmd: |
+    uenv start icon-wcp --ignore-tty << 'EOF'
+    . /capstor/scratch/cscs/ekoene/spack-nco/setup-env.sh /user-environment/
+    spack load icontools cdo nco
+    set -euo pipefail
+
+cdo_nco_cmd_post: |
+    EOF
+
+meteo:
+    nudging_step: 3
+    fetch_era5: True
+
+chem:
+    fetch_CAMS: True
+
+remap_icbc:
+    scripts:
+        - ICBC/remap_era5.sh
+        - ICBC/add_cams_co2.sh
+
+input_files:
+    radiation_grid_filename: /users/ekoene/CTDAS_inputs/icon_europe_DOM01.parent.nc
+    dynamics_grid_filename: /users/ekoene/CTDAS_inputs/icon_europe_DOM01.nc
+    extpar_filename: /users/ekoene/CTDAS_inputs/icon_extpar_EriksGrid.nc
+    map_filename: ./cases/icon-art-ctdas/map_file.ana
+    wrapper_filename: ./cases/icon-art-ctdas/new_wrapper.sh

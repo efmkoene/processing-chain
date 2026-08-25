@@ -71,7 +71,7 @@ class Config():
         # Specific settings based on the node type ('gpu' or 'mc')
         if self.machine == 'daint':
             self.set_node_info()
-        elif self.machine == 'eiger':
+        elif self.machine == 'eiger' or self.machine == 'santis':
             self.set_node_info()
 
     def load_config_file(self):
@@ -156,6 +156,8 @@ class Config():
                 self.machine = 'euler'
             elif hostname.startswith('eiger'):
                 self.machine = 'eiger'
+            elif hostname.startswith('santis'):
+                self.machine = 'santis'
             else:
                 raise ValueError(f"Unsupported hostname: {hostname}")
             print(f"You are on the {self.machine} machine.")
@@ -476,7 +478,7 @@ class Config():
                 f'./run_chain.py {self.casename} -j {job_name} -c {self.chunk_id} -f -s --no-logging',
                 '',
             ]
-        elif self.machine == 'eiger':
+        elif self.machine == 'eiger' or self.machine == 'santis':
             script_lines = [
                 '#!/usr/bin/env bash',
                 f'#SBATCH --job-name={job_name}',
@@ -536,7 +538,7 @@ class Config():
                     f'#SBATCH --dependency=afterany:{dep_str}', '',
                     '# Do nothing', 'exit 0'
                 ]
-            elif self.machine == 'eiger':
+            elif self.machine == 'eiger' or self.machine == 'santis':
                 script_lines = [
                     '#!/usr/bin/env bash', '#SBATCH --job-name="wait"',
                     '#SBATCH --nodes=1', '#SBATCH --time=00:01:00',
