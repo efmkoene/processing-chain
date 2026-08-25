@@ -19,3 +19,11 @@ dependencies:
   - sphinx
   - sphinx_rtd_theme
   - sphinx-copybutton
+  - gcsfs
+  - tqdm
+  - shapely
+  - beautifulsoup4
+  - pip
+  - pip:
+    - icoscp
+    - icoscp_core
