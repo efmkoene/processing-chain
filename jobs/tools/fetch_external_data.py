@@ -244,7 +244,10 @@ _ERA5_HYBRID_ATTRS = {
 }
 
 
-def _era5_swvl_to_smi(ds, levels=(1, 2, 3, 4), var_prefix="SMIL", soiltype_var="SLT"):
+def _era5_swvl_to_smi(ds,
+                      levels=(1, 2, 3, 4),
+                      var_prefix="SMIL",
+                      soiltype_var="SLT"):
     """Convert volumetric soil water content (swvl1..4) to a soil moisture
     index, using per-soil-type wilting point / field capacity, in place."""
     slt = ds[soiltype_var].astype(int)
@@ -295,8 +298,10 @@ def fetch_era5_arco(times, out_dir, area=(35., 62., -12., 25.)):
         (latmin, latmax, lonmin, lonmax) bounding box to crop to.
     """
     out_dir = Path(out_dir)
-    times = [t for t in times if not (out_dir /
-                                      f"ERA5_{t.strftime('%Y%m%d%H')}.nc").exists()]
+    times = [
+        t for t in times
+        if not (out_dir / f"ERA5_{t.strftime('%Y%m%d%H')}.nc").exists()
+    ]
     if not times:
         logging.info("All requested ERA5 timesteps already fetched")
         return
@@ -308,13 +313,15 @@ def fetch_era5_arco(times, out_dir, area=(35., 62., -12., 25.)):
         "gs://gcp-public-data-arco-era5/ar/model-level-1h-0p25deg.zarr-v1"),
                             consolidated=True)
     ar_surface = xr.open_zarr(fs.get_mapper(
-        "gs://gcp-public-data-arco-era5/ar/full_37-1h-0p25deg-chunk-1.zarr-v3"),
+        "gs://gcp-public-data-arco-era5/ar/full_37-1h-0p25deg-chunk-1.zarr-v3"
+    ),
                               consolidated=True)
 
     ar_model = ar_model.assign_coords(
         longitude=((ar_model.longitude + 180) % 360) - 180).sortby("longitude")
     ar_surface = ar_surface.assign_coords(
-        longitude=((ar_surface.longitude + 180) % 360) - 180).sortby("longitude")
+        longitude=((ar_surface.longitude + 180) % 360) -
+        180).sortby("longitude")
 
     hyai, hybi, hyam, hybm = _era5_hybrid_coeffs()
 
@@ -323,13 +330,17 @@ def fetch_era5_arco(times, out_dir, area=(35., 62., -12., 25.)):
         timestamp = pd.Timestamp(t).tz_localize(None)
 
         surf = ar_surface.sel(
-            time=timestamp, latitude=slice(latmax, latmin),
-            longitude=slice(lonmin, lonmax))[_ERA5_SURFACE_VARS].expand_dims(
-                time=[timestamp])
+            time=timestamp,
+            latitude=slice(latmax, latmin),
+            longitude=slice(
+                lonmin,
+                lonmax))[_ERA5_SURFACE_VARS].expand_dims(time=[timestamp])
         ml = ar_model.sel(
-            time=timestamp, latitude=slice(latmax, latmin),
-            longitude=slice(lonmin, lonmax))[_ERA5_MODELLEVEL_VARS].expand_dims(
-                time=[timestamp])
+            time=timestamp,
+            latitude=slice(latmax, latmin),
+            longitude=slice(
+                lonmin,
+                lonmax))[_ERA5_MODELLEVEL_VARS].expand_dims(time=[timestamp])
 
         ds = xr.merge([surf, ml], compat="override").compute()
         ds = ds.rename(_ERA5_RENAME_MAP)
@@ -342,7 +353,10 @@ def fetch_era5_arco(times, out_dir, area=(35., 62., -12., 25.)):
             nhym=_ERA5_NHYM,
             nhyi=_ERA5_NHYI,
             bnds=_ERA5_BNDS,
-            **{dim: [mid] for dim, (mid, _, _) in _ERA5_DEPTH_INFO.items()},
+            **{
+                dim: [mid]
+                for dim, (mid, _, _) in _ERA5_DEPTH_INFO.items()
+            },
         )
         ds["hyam"] = ("nhym", hyam)
         ds["hybm"] = ("nhym", hybm)
@@ -388,7 +402,10 @@ def is_valid_zip(filepath):
         return False
 
 
-def fetch_cams_co2_months(year_months, out_dir, start_date=None, end_date=None,
+def fetch_cams_co2_months(year_months,
+                          out_dir,
+                          start_date=None,
+                          end_date=None,
                           tmp_dir=None):
     """Fetch CAMS CO2 concentration data via ADS, restricted to the given
     (year, month) pairs, then split into per-timestep
@@ -445,7 +462,8 @@ def fetch_cams_co2_months(year_months, out_dir, start_date=None, end_date=None,
                 "month": [f"{m:02d}" for m in months],
             }
             client.retrieve(dataset, request).download(target)
-            logging.info(f"Downloaded CAMS data for {year}-{months} to {target}")
+            logging.info(
+                f"Downloaded CAMS data for {year}-{months} to {target}")
         else:
             logging.info(f"CAMS zip already downloaded: {target}")
 
@@ -460,18 +478,20 @@ def fetch_cams_co2_months(year_months, out_dir, start_date=None, end_date=None,
 
                 ds_cams = xr.open_dataset(local_path)
                 for time in ds_cams.time:
-                    if start_date is not None and time.values < np.datetime64(start_date):
+                    if start_date is not None and time.values < np.datetime64(
+                            start_date):
                         continue
-                    if end_date is not None and time.values > np.datetime64(end_date):
+                    if end_date is not None and time.values > np.datetime64(
+                            end_date):
                         continue
-                    stamp = np.datetime_as_string(time.values,
-                                                  unit="h").replace(
-                                                      "-", "").replace(":", "")
+                    stamp = np.datetime_as_string(
+                        time.values, unit="h").replace("-",
+                                                       "").replace(":", "")
                     outpath = out_dir / f"cams_egg4_{stamp}.nc"
                     if not outpath.exists():
                         logging.info(f"Writing CAMS data to {outpath}")
                         ds_cams.sel(time=time,
-                                   drop=True).squeeze().to_netcdf(outpath)
+                                    drop=True).squeeze().to_netcdf(outpath)
                 ds_cams.close()
 
     logging.info("Finished processing CAMS data.")

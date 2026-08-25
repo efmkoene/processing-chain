@@ -141,7 +141,7 @@ def generate_tracers_xml(data,
                                   type="char").text = "none"
         else:
             if item_id.endswith("XXX"):
-                for i in np.arange(n_bg_ens+1) + 1:
+                for i in np.arange(n_bg_ens + 1) + 1:
                     tracer_bg_xxx = ET.SubElement(tracers,
                                                   "chemtracer",
                                                   id=f"{item_id[:-4]}-{i:03}")
@@ -174,9 +174,7 @@ def generate_tracers_xml(data,
                                        xml_string).toprettyxml()
 
 
-def reduce_tracers_xml(tracers_xml_in: Path,
-                       tracers_xml_out: Path,
-                       cfg):
+def reduce_tracers_xml(tracers_xml_in: Path, tracers_xml_out: Path, cfg):
     """
     Reduce tracer ensembles in ICON tracer XML
     Keeps:
@@ -200,7 +198,7 @@ def reduce_tracers_xml(tracers_xml_in: Path,
     if len(ens_keys) != 1:
         raise ValueError("Expected exactly one tracer key ending in -XXX")
     template_key = ens_keys[0]
-    prefix = template_key[:-4]    # remove "-XXX"
+    prefix = template_key[:-4]  # remove "-XXX"
 
     # Pattern to match ensemble tracers in XML, e.g. TRCO2_A-001
     pattern = re.compile(rf"^{re.escape(prefix)}-(\d{{3}})$")
@@ -215,7 +213,8 @@ def reduce_tracers_xml(tracers_xml_in: Path,
     # 3. Extract all ensemble tracer nodes
     # ----------------------------------------------------
     ens_nodes = []
-    for node in list(root.findall("chemtracer")):   # list() because we may remove
+    for node in list(
+            root.findall("chemtracer")):  # list() because we may remove
         tid = node.get("id")
         m = pattern.match(tid)
         if m:
@@ -232,7 +231,7 @@ def reduce_tracers_xml(tracers_xml_in: Path,
     # 4. Decide which nodes to keep
     # ----------------------------------------------------
     first_num, first_node = ens_nodes[0]
-    to_keep = [(first_node, "001")]   # always keep first
+    to_keep = [(first_node, "001")]  # always keep first
 
     if cfg.CTDAS_propagate_bg:
         last_num, last_node = ens_nodes[-1]

@@ -52,9 +52,10 @@ def main(cfg):
         tools.create_dir(era5_dir, "ERA5 input files")
         times = list(
             tools.iter_hours(fetch_start, fetch_end, cfg.meteo_nudging_step))
-        area = tuple(cfg.meteo_area) if hasattr(cfg,
-                                                'meteo_area') else (35., 62.,
-                                                                    -12., 25.)
+        area = tuple(cfg.meteo_area) if hasattr(cfg, 'meteo_area') else (35.,
+                                                                         62.,
+                                                                         -12.,
+                                                                         25.)
         fetch_era5_arco(times, era5_dir, area=area)
 
     if getattr(cfg, 'chem_fetch_CAMS', False):

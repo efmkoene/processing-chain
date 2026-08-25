@@ -81,7 +81,8 @@ def lambda_regions_land_ocean_boxes(cfg, output_path, lambdas):
     # that once shifted from 0-based.
     keys = np.where(
         is_land[:, None],
-        np.c_[np.arange(n_cells) - 10**12, np.zeros(n_cells)],  # unique per land cell
+        np.c_[np.arange(n_cells) - 10**12,
+              np.zeros(n_cells)],  # unique per land cell
         np.c_[np.floor(clon / box_deg),
               np.floor(clat / box_deg)])  # shared per ocean box
     _, reg0 = np.unique(keys, axis=0, return_inverse=True)
@@ -275,14 +276,16 @@ def boundary_regions_compass_walk(cfg, output_path, n_bg_ens):
         raw_nbr = ds['neighbor_cell_index'].values
 
     if raw_nbr.ndim != 2:
-        raise RuntimeError("Unexpected neighbor array shape: expected 2D array.")
+        raise RuntimeError(
+            "Unexpected neighbor array shape: expected 2D array.")
     if raw_nbr.shape[0] == ncell:
         nbr = raw_nbr.copy()
     elif raw_nbr.shape[1] == ncell:
         nbr = raw_nbr.T.copy()
     else:
         raise RuntimeError(
-            f"Can't interpret neighbor array shape {raw_nbr.shape} for ncell={ncell}")
+            f"Can't interpret neighbor array shape {raw_nbr.shape} for ncell={ncell}"
+        )
 
     # ICON grid files use either 0 or 1-based neighbor indices with 0/negative
     # meaning "no neighbor" (domain edge) -- normalize both to 0-based with -1
@@ -356,8 +359,10 @@ def boundary_regions_compass_walk(cfg, output_path, n_bg_ens):
 
     l_loop = boundary_coords.shape[0]
     anchor_idx_in_loop = [
-        int(np.argmin(np.hypot(boundary_coords[:, 0] - ax, boundary_coords[:, 1] - ay)))
-        for ax, ay in anchors
+        int(
+            np.argmin(
+                np.hypot(boundary_coords[:, 0] - ax,
+                         boundary_coords[:, 1] - ay))) for ax, ay in anchors
     ]
     anchor_idx_sorted = np.sort(np.array(anchor_idx_in_loop, dtype=int))
 
@@ -372,7 +377,7 @@ def boundary_regions_compass_walk(cfg, output_path, n_bg_ens):
         else:
             seg_loop_pos = np.concatenate(
                 [np.arange(start_i, l_loop),
-                np.arange(0, end_i + 1)])
+                 np.arange(0, end_i + 1)])
         boundary_segment_of_cell[boundary_idx[seg_loop_pos]] = i
 
     # Assign every interior cell to its nearest boundary segment.
@@ -397,7 +402,8 @@ def boundary_regions_compass_walk(cfg, output_path, n_bg_ens):
         attrs["email"] = cfg.user_mail
     ds_boundary = xr.Dataset(
         data_vars={
-            "boundaryregion": (["cell", "reg"], np.eye(8, dtype=np.int32)[cell_region]),
+            "boundaryregion":
+            (["cell", "reg"], np.eye(8, dtype=np.int32)[cell_region]),
             "global_cell_idx": (["cell"], np.arange(ncell)),
         },
         coords={

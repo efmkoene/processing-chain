@@ -104,19 +104,21 @@ def fetch_ICOS_data(query_type='any',
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
-    specie = set(species)  # placeholder until the per-object line below narrows it;
-                           # needed unconditionally since the collection_url path
-                           # never runs the species-labeled spec-query loop above
+    specie = set(
+        species)  # placeholder until the per-object line below narrows it;
+    # needed unconditionally since the collection_url path
+    # never runs the species-labeled spec-query loop above
     for d in result.data()['dobj']:
         logging.info(f"Processing data object: {specie} for object {d}")
         finished = False
         while not finished:
             try:
                 outfn = os.path.join(
-                    save_path, 'ICOS_obs_' + str(specie)[2:-2] + '_' + query_type +
-                    '_' + str(Dobj(d).station['id']) + '_' +
-                    str(Dobj(d).meta['specificInfo']['acquisition']['samplingHeight'])
-                    + '_' + start_date + '_' + end_date + '.nc')
+                    save_path, 'ICOS_obs_' + str(specie)[2:-2] + '_' +
+                    query_type + '_' + str(Dobj(d).station['id']) + '_' + str(
+                        Dobj(d).meta['specificInfo']['acquisition']
+                        ['samplingHeight']) + '_' + start_date + '_' +
+                    end_date + '.nc')
 
                 # Skip if filename exists (checked before the expensive .data pull,
                 # so a re-run over already-cached stations doesn't re-fetch them)
@@ -130,9 +132,12 @@ def fetch_ICOS_data(query_type='any',
                 variables = Dobj(d).variables.to_numpy()
                 Names = Dobj(d).colNames
                 specie = set(Names) - set(Names).difference(species)
-                meta = np.squeeze(
-                    [x for x in variables if set(species) - set(x) != set(species)])
-                ds = xr.Dataset.from_dataframe(obj)  # This contains the data...
+                meta = np.squeeze([
+                    x for x in variables
+                    if set(species) - set(x) != set(species)
+                ])
+                ds = xr.Dataset.from_dataframe(
+                    obj)  # This contains the data...
                 # --- Cleanup of the dataframe...
                 ds = ds.set_index(index='TIMESTAMP')
                 ds = ds.sortby(ds.index)
@@ -149,7 +154,8 @@ def fetch_ICOS_data(query_type='any',
                 ds.attrs['Description'] = meta[2]
                 ds.attrs['Units'] = meta[1]
                 ds.attrs['Station'] = Dobj(d).station['id']
-                ds.attrs['Full name of the station'] = Dobj(d).station['org']['name']
+                ds.attrs['Full name of the station'] = Dobj(
+                    d).station['org']['name']
                 ds.attrs['Elevation above sea level'] = Dobj(d).alt
                 ds.attrs['Sampling height over ground'] = Dobj(
                     d).meta['specificInfo']['acquisition']['samplingHeight']
@@ -235,7 +241,8 @@ def process_ICOS_data(ICOS_obs_folder,
     logging.info(f'Will package data from {number_of_stations} files, {files}')
 
     if number_of_stations == 0:
-        logging.info('No ICOS station files found for this window, nothing to package')
+        logging.info(
+            'No ICOS station files found for this window, nothing to package')
         return
 
     # Prepare
@@ -270,8 +277,8 @@ def process_ICOS_data(ICOS_obs_folder,
             # bound, not an inclusive whole-day one -- it silently drops
             # all but the midnight sample of end_date. Use date strings, as
             # fetch_ICOS_data already does for the same reason above.
-            ds_filtered = ds.sel(time=slice(
-                start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')))
+            ds_filtered = ds.sel(time=slice(start_date.strftime('%Y-%m-%d'),
+                                            end_date.strftime('%Y-%m-%d')))
 
             # Align `chosen_dates` with `ds_filtered.time`
             ds_aligned = ds_filtered.reindex(time=chosen_dates,
@@ -323,7 +330,8 @@ def process_ICOS_data(ICOS_obs_folder,
         if icon_poly is not None:
             in_domain = bool(contains_xy(icon_poly, lon, lat))
         else:
-            in_domain = (lon_lims[0] < lon < lon_lims[-1]) and (lat_lims[0] < lat < lat_lims[-1])
+            in_domain = (lon_lims[0] < lon <
+                         lon_lims[-1]) and (lat_lims[0] < lat < lat_lims[-1])
         if any(np.isfinite(cnc)) and in_domain:
             np.place(obs_cnc_matrix[ix], mask_true, cnc)
             np.place(obs_std_matrix[ix], mask_true, std)
@@ -452,7 +460,10 @@ def download_file(url, out_folder: Path, session=None):
     with session.get(url, stream=True) as r:
         r.raise_for_status()
         total = int(r.headers.get("content-length", 0))
-        with open(local, "wb") as f, tqdm(total=total, unit="B", unit_scale=True, desc=local.name) as pbar:
+        with open(local, "wb") as f, tqdm(total=total,
+                                          unit="B",
+                                          unit_scale=True,
+                                          desc=local.name) as pbar:
             for chunk in r.iter_content(chunk_size=8192):
                 if chunk:
                     f.write(chunk)
@@ -521,7 +532,9 @@ def load_icon_polygon_erode_buffer(icon_nc_path, n_layers=42):
             break
 
         active -= boundary
-        logging.info(f"Layer {layer + 1}: {len(boundary)} cells removed, {len(active)} remaining")
+        logging.info(
+            f"Layer {layer + 1}: {len(boundary)} cells removed, {len(active)} remaining"
+        )
 
     # --- Union remaining polygons ---
     # shapely.ops.unary_union() routes through shapely's vectorized
@@ -535,7 +548,11 @@ def load_icon_polygon_erode_buffer(icon_nc_path, n_layers=42):
     def _tree_union(geoms):
         geoms = list(geoms)
         while len(geoms) > 1:
-            nxt = [geoms[i].union(geoms[i + 1]) for i in range(0, len(geoms) - 1, 2)]
+            nxt = [
+                geoms[i].union(geoms[i + 1])
+                for i in range(0,
+                               len(geoms) - 1, 2)
+            ]
             if len(geoms) % 2:
                 nxt.append(geoms[-1])
             geoms = nxt
@@ -543,7 +560,9 @@ def load_icon_polygon_erode_buffer(icon_nc_path, n_layers=42):
 
     domain = _tree_union(eroded_polys)
 
-    logging.info(f"Eroded ICON polygon built ({domain.geom_type}, area={domain.area:.4f} deg^2)")
+    logging.info(
+        f"Eroded ICON polygon built ({domain.geom_type}, area={domain.area:.4f} deg^2)"
+    )
     return domain
 
 
@@ -620,15 +639,20 @@ def fetch_OCO2_data(DATE_WINDOW=("2017-12-28", "2018-01-15"),
         return OUT_DIR / (Path(url).stem + "_masked.nc4")
 
     urls_to_process = [u for u in all_urls if not masked_path(u).exists()]
-    masked_files = [masked_path(u) for u in all_urls if masked_path(u).exists()]
+    masked_files = [
+        masked_path(u) for u in all_urls if masked_path(u).exists()
+    ]
     if not urls_to_process:
         logging.info(
             f"All {len(all_urls)} OCO-2 files already downloaded and masked, nothing to do"
         )
         return
 
-    logging.info("Loading ICON domain and building domain polygon (this may take some seconds)...")
-    icon_poly = load_icon_polygon_erode_buffer(ICON_GRID_PATH, n_layers=n_layers)
+    logging.info(
+        "Loading ICON domain and building domain polygon (this may take some seconds)..."
+    )
+    icon_poly = load_icon_polygon_erode_buffer(ICON_GRID_PATH,
+                                               n_layers=n_layers)
     logging.info("ICON polygon built.")
 
     skipped = []
@@ -653,7 +677,9 @@ def fetch_OCO2_data(DATE_WINDOW=("2017-12-28", "2018-01-15"),
         ds.close()
         masked_files.append(out_masked)
 
-    logging.info(f"Processing complete. Masked: {len(masked_files)} files. Skipped: {len(skipped)}.")
+    logging.info(
+        f"Processing complete. Masked: {len(masked_files)} files. Skipped: {len(skipped)}."
+    )
 
 
 def process_OCO2_data(OCO2_obs_folder,
@@ -679,20 +705,21 @@ def process_OCO2_data(OCO2_obs_folder,
                 "latitude": (["soundings"], np.array([], dtype=np.float32)),
                 "longitude": (["soundings"], np.array([], dtype=np.float32)),
                 "date": (["soundings", "epoch_dimension"
-                        ], np.empty((0, 7), dtype=np.float32)),
+                          ], np.empty((0, 7), dtype=np.float32)),
                 "obs": (["soundings"], np.array([], dtype=np.float32)),
                 "quality_flag": (["soundings"], np.array([], dtype=np.int32)),
-                "averaging_kernel": (["soundings", "layers"
-                                    ], np.empty((0, 20), dtype=np.float32)),
-                "pressure_levels": (["soundings", "layers"
-                                    ], np.empty((0, 20), dtype=np.float32)),
+                "averaging_kernel":
+                (["soundings", "layers"], np.empty((0, 20), dtype=np.float32)),
+                "pressure_levels":
+                (["soundings", "layers"], np.empty((0, 20), dtype=np.float32)),
                 "pressure_weighting_function":
                 (["soundings", "layers"], np.empty((0, 20), dtype=np.float32)),
-                "prior_profile": (["soundings", "layers"
-                                  ], np.empty((0, 20), dtype=np.float32)),
+                "prior_profile":
+                (["soundings", "layers"], np.empty((0, 20), dtype=np.float32)),
                 "prior": (["soundings"], np.array([], dtype=np.float32)),
                 "uncertainty": (["soundings"], np.array([], dtype=np.float32)),
-                "surface_pressure": (["soundings"], np.array([], dtype=np.float32)),
+                "surface_pressure":
+                (["soundings"], np.array([], dtype=np.float32)),
             },
             coords={
                 "soundings": np.array([], dtype=np.int32),
@@ -724,11 +751,13 @@ def process_OCO2_data(OCO2_obs_folder,
         logging.info(f'Found file(s): {file}')
 
         if not file:
-            logging.info(f'No OCO-2 files found for date {day.strftime("%Y-%m-%d")}')
+            logging.info(
+                f'No OCO-2 files found for date {day.strftime("%Y-%m-%d")}')
             _empty_dataset('unknown').to_netcdf(output_file)
             continue
         elif len(file) > 1:
-            raise IndexError("Error, more OCO-2 files exist than expected. Review.")
+            raise IndexError(
+                "Error, more OCO-2 files exist than expected. Review.")
         else:
             logging.info(f'Will open data from {file}')
 
@@ -774,7 +803,9 @@ def process_OCO2_data(OCO2_obs_folder,
             "xco2_uncertainty": "uncertainty"
         })
         s5p_out["pressure_levels"][:] = s5p_out.pressure_levels[:, ::-1].values
-        s5p_out["pressure_weighting_function"][:] = s5p_out.pressure_weighting_function[:, ::-1].values
+        s5p_out[
+            "pressure_weighting_function"][:] = s5p_out.pressure_weighting_function[:, ::
+                                                                                    -1].values
         s5p_out["prior_profile"][:] = s5p_out.prior_profile[:, ::-1].values
         s5p_out["surface_pressure"] = s5p_out.pressure_levels[:, 0]
         s5p_out.attrs.update({

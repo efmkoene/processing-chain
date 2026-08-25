@@ -82,7 +82,7 @@ def create_boundary_prior_separate(output_path,
         attrs['email'] = email
     ds_lambdas = xr.Dataset(data_vars={'lambda': (['ens', 'reg'], lambdas)},
                             coords={
-                                'ens': (['ens'], np.arange(n_bg_ens+1)),
+                                'ens': (['ens'], np.arange(n_bg_ens + 1)),
                                 'reg': (['reg'], np.arange(n_bg_ens))
                             },
                             attrs=attrs)

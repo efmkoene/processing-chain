@@ -8,7 +8,8 @@ import importlib.util
 from . import tools
 from .tools import oem_regions
 from .tools.generate_tracers_xml import generate_tracers_xml
-from .tools.ctdas_utilities import (create_prior_all_ones, create_prior_all_zeros,
+from .tools.ctdas_utilities import (create_prior_all_ones,
+                                    create_prior_all_zeros,
                                     create_boundary_prior_all_ones,
                                     create_boundary_prior_separate)
 
@@ -50,7 +51,8 @@ def _resolve_region_strategy(cfg, config_attr, strategies, default_name,
 
 def generate_tracers(cfg):
     """Generate the tracers.xml files (chemtracer definitions for OEM)."""
-    tools.create_dir(xml_folder := cfg.case_root / "global_inputs" / "XML", "XML")
+    tools.create_dir(xml_folder := cfg.case_root / "global_inputs" / "XML",
+                     "XML")
     TR_prior = generate_tracers_xml(cfg.tracers,
                                     cfg.CTDAS_nensembles,
                                     restart=False,
@@ -60,10 +62,10 @@ def generate_tracers(cfg):
                                       restart=True,
                                       propagate_bg=cfg.CTDAS_propagate_bg)
     with open(xml_folder / "tracers_firstrun.xml", "w",
-             encoding="utf-8") as file:
+              encoding="utf-8") as file:
         file.write(TR_prior)
     with open(xml_folder / "tracers_restart.xml", "w",
-             encoding="utf-8") as file:
+              encoding="utf-8") as file:
         file.write(TR_restart)
     if cfg.CTDAS_runthrough:
         TR_runthrough_prior = generate_tracers_xml(cfg.tracers,
@@ -77,12 +79,12 @@ def generate_tracers(cfg):
                                                      restart=True,
                                                      runthrough=True)
         with open(xml_folder / "tracers_runthrough_firstrun.xml",
-                 "w",
-                 encoding="utf-8") as file:
+                  "w",
+                  encoding="utf-8") as file:
             file.write(TR_runthrough_prior)
         with open(xml_folder / "tracers_runthrough_restart.xml",
-                 "w",
-                 encoding="utf-8") as file:
+                  "w",
+                  encoding="utf-8") as file:
             file.write(TR_runthrough_restart)
 
 
@@ -102,7 +104,8 @@ def generate_oem_priors(cfg):
     jobs/tools/oem_regions.py's docstrings for what each strategy needs
     from cfg.
     """
-    tools.create_dir(OEM_folder := cfg.case_root / "global_inputs" / "OEM", "OEM")
+    tools.create_dir(OEM_folder := cfg.case_root / "global_inputs" / "OEM",
+                     "OEM")
 
     # Interpret lambdas from the YAML file
     lambdas = [
@@ -110,9 +113,11 @@ def generate_oem_priors(cfg):
     ]
 
     lambda_regions_fn = _resolve_region_strategy(
-        cfg, 'prepare_oem_lambda_regions', oem_regions.LAMBDA_REGION_STRATEGIES,
-        'per_cell', 'generate_lambda_regions')
-    nregs, ncats = lambda_regions_fn(cfg, OEM_folder / "lambdaregions.nc", lambdas)
+        cfg, 'prepare_oem_lambda_regions',
+        oem_regions.LAMBDA_REGION_STRATEGIES, 'per_cell',
+        'generate_lambda_regions')
+    nregs, ncats = lambda_regions_fn(cfg, OEM_folder / "lambdaregions.nc",
+                                     lambdas)
 
     create_prior_all_ones(OEM_folder / "prior_all_ones.nc",
                           nensembles=cfg.CTDAS_nensembles,
@@ -134,9 +139,11 @@ def generate_oem_priors(cfg):
         # Attribution comes from whoever ran the chain, not a fixed name -
         # cfg.user_name/cfg.user_mail are already set from $USER / ~/.forward.
         boundary_regions_fn = _resolve_region_strategy(
-            cfg, 'prepare_oem_boundary_regions', oem_regions.BOUNDARY_REGION_STRATEGIES,
-            'angular_quadrant', 'generate_boundary_regions')
-        boundary_regions_fn(cfg, OEM_folder / 'boundary_mask_bg.nc', cfg.CTDAS_nboundaries)
+            cfg, 'prepare_oem_boundary_regions',
+            oem_regions.BOUNDARY_REGION_STRATEGIES, 'angular_quadrant',
+            'generate_boundary_regions')
+        boundary_regions_fn(cfg, OEM_folder / 'boundary_mask_bg.nc',
+                            cfg.CTDAS_nboundaries)
 
         create_boundary_prior_all_ones(OEM_folder / 'boundary_lambdas_bg.nc',
                                        n_bg_ens=cfg.CTDAS_nboundaries,

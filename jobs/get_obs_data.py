@@ -45,7 +45,8 @@ def main(cfg):
 
         icos_dir = cfg.case_root / "global_inputs" / "ICOS"
         tools.create_dir(icos_dir, "ICOS input files")
-        icon_poly = load_icon_polygon_erode_buffer(grid_file, n_layers=n_layers)
+        icon_poly = load_icon_polygon_erode_buffer(grid_file,
+                                                   n_layers=n_layers)
         process_ICOS_data(ICOS_obs_folder=cfg.CTDAS_obs_ICOS_path,
                           start_date=fetch_start,
                           end_date=fetch_end,
@@ -54,7 +55,7 @@ def main(cfg):
 
     if getattr(cfg, 'CTDAS_obs_OCO2_fetch', False):
         fetch_OCO2_data(DATE_WINDOW=(fetch_start.strftime("%Y-%m-%d"),
-                                    fetch_end.strftime("%Y-%m-%d")),
+                                     fetch_end.strftime("%Y-%m-%d")),
                         OUT_DIR=cfg.CTDAS_obs_OCO2_path,
                         ICON_GRID_PATH=grid_file,
                         n_layers=n_layers)
